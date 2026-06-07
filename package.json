@@ -1,12 +1,17 @@
 {
   "name": "qrv-node",
-  "version": "0.1.0",
-  "description": "Deterministic verification engine for the QR-V Global Verification Network.",
+  "version": "0.2.0",
+  "description": "QR-V Network root node for qrv.network: public network portal, domain map, verification routing, health checks, and production deployment metadata.",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "check": "node --check server.js",
+    "smoke": "node -e \"const base=process.env.QRV_NODE_URL||'http://127.0.0.1:3000'; Promise.all(['/healthz','/readyz','/version'].map(p=>fetch(base+p).then(r=>r.json()))).then(console.log)\""
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "express": "^4.19.2"
