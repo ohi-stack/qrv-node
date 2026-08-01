@@ -1,14 +1,15 @@
 {
   "name": "qrv-node",
-  "version": "0.2.0",
-  "description": "QR-V Network root node for qrv.network: public network portal, domain map, verification routing, health checks, and production deployment metadata.",
+  "version": "0.3.0",
+  "description": "Canonical QR-V Network root node for qrv.network: production public routes, service directory, verification handoff, health checks, and deployment metadata.",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "check": "node --check server.js",
-    "smoke": "node -e \"const base=process.env.QRV_NODE_URL||'http://127.0.0.1:3000'; Promise.all(['/healthz','/readyz','/version'].map(p=>fetch(base+p).then(r=>r.json()))).then(console.log)\""
+    "check": "node --check server.js && node --check scripts/live-acceptance.mjs",
+    "smoke": "node -e \"const base=process.env.QRV_NODE_URL||'http://127.0.0.1:3000'; Promise.all(['/healthz','/readyz','/version'].map(p=>fetch(base+p).then(r=>r.json()))).then(console.log)\"",
+    "acceptance:live": "node scripts/live-acceptance.mjs"
   },
   "engines": {
     "node": ">=20"
