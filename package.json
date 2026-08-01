@@ -1,6 +1,6 @@
 {
   "name": "qrv-node",
-  "version": "0.3.0",
+  "version": "0.2.1",
   "description": "Canonical QR-V Network root node for qrv.network: production public routes, service directory, verification handoff, health checks, and deployment metadata.",
   "type": "module",
   "main": "server.js",
