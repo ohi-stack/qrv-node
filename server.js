@@ -1,160 +1,118 @@
+import crypto from "node:crypto";
 import express from "express";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+import QRCode from "qrcode";
 
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", 1);
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "64kb" }));
+app.use(rateLimit({ windowMs: 60_000, limit: 240, standardHeaders: "draft-7", legacyHeaders: false }));
 
 const SERVICE_NAME = process.env.SERVICE_NAME || "qrv-platform";
-const VERSION = process.env.SERVICE_VERSION || "2.0.0";
+const VERSION = process.env.SERVICE_VERSION || "2.1.0";
 const STARTED_AT = new Date().toISOString();
 const ROOT_URL = process.env.QRV_PUBLIC_BASE_URL || "https://qrv.network";
-const API_BASE_URL = process.env.QRV_API_BASE_URL || "https://api.qrv.network/api/v1";
+const API_BASE_URL = (process.env.QRV_API_BASE_URL || "https://api.qrv.network/api/v1").replace(/\/$/, "");
+const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, "");
 const DEMO_QRVID = process.env.DEMO_QRVID || "QRV-PROD-CERT-000001";
+const API_TIMEOUT_MS = Number(process.env.QRV_API_TIMEOUT_MS || 7000);
+const ISSUER_ID = String(process.env.QRV_ISSUER_ID || "").trim();
+const ISSUER_NAME = String(process.env.QRV_ISSUER_NAME || "").trim();
+const WRITE_API_KEY = String(process.env.QRV_WRITE_API_KEY || "");
+const PORTAL_USER = String(process.env.ISSUER_PORTAL_USERNAME || "");
+const PORTAL_PASSWORD_SCRYPT = String(process.env.ISSUER_PORTAL_PASSWORD_SCRYPT || "");
+const SESSION_SECRET = String(process.env.ISSUER_SESSION_SECRET || "");
+const SESSION_COOKIE = "qrv_issuer_session";
+const SESSION_TTL_SECONDS = Math.min(Math.max(Number(process.env.ISSUER_SESSION_TTL_SECONDS || 28800), 900), 86400);
+const QRVID_FORMAT = /^QRV-[A-Z0-9]+-[A-Z0-9]+-[0-9]{6,}$/;
+const loginAttempts = new Map();
+const legacyHostRoutes = {"verify.qrv.network":"/verify","issuer.qrv.network":"/issuer","registry.qrv.network":"/registry","explorer.qrv.network":"/registry","docs.qrv.network":"/docs","developers.qrv.network":"/developers","status.qrv.network":"/status"};
 
-const primaryNav = [
-  ["Verify", "/verify"],
-  ["Issuer", "/issuer"],
-  ["Registry", "/registry"],
-  ["Use Cases", "/use-cases"],
-  ["Developers", "/developers"],
-  ["Pricing", "/pricing"],
-  ["Docs", "/docs"],
-];
+app.use((req,res,next)=>{const host=String(req.hostname||"").toLowerCase();if(host==="www.qrv.network")return res.redirect(308,`${ROOT_URL}${req.originalUrl}`);const prefix=legacyHostRoutes[host];if(!prefix)return next();const suffix=req.originalUrl==="/"?"":req.originalUrl;return res.redirect(308,`${ROOT_URL}${prefix}${suffix}`);});
 
+const primaryNav = [["Verify","/verify"],["Issuer","/issuer"],["Registry","/registry"],["Use Cases","/use-cases"],["Developers","/developers"],["Docs","/docs"]];
 const pages = {
-  "/protocol": ["QR-V Protocol", "QRVP-1 defines how QR-V identifiers resolve into registry-backed verification results.", ["Identifier format", "Resolution model", "Verification states", "SHA-256 + Ed25519"]],
-  "/how-it-works": ["How QR-V Works", "Issue → registry → QR code → scan → API verification → deterministic result.", ["Issue record", "Generate QR", "Resolve QRVID", "Display result"]],
-  "/registry": ["Registry", "Browse and inspect QR-V records through the consolidated qrv.network platform while api.qrv.network remains the only backend service.", ["Record lookup", "Issuer registry", "Certificate records", "Audit trail"]],
-  "/use-cases": ["Use Cases", "QR-V supports certificates, memberships, products, documents, assets, property, financial records, and event credentials.", ["Verified Certificates", "Membership Verification", "Product Authentication", "Document Verification"]],
-  "/developers": ["Developers", "Integrate directly with the versioned JSON API at api.qrv.network.", ["REST API", "Authentication", "Webhooks", "SDKs"]],
-  "/docs": ["Documentation", "Protocol, standard, architecture, issuer, registry, security, and API documentation live under qrv.network/docs.", ["QRVP-1", "QVS-1.0", "API Reference", "Security"]],
-  "/pricing": ["Pricing", "QR-V is sold as verification infrastructure, with certificate verification as the first commercial product.", ["Pilot", "Starter Issuer", "Professional", "Enterprise / White Label"]],
-  "/network": ["Platform Architecture", "QR-V is consolidated to two production nodes: qrv.network for all user-facing experiences and api.qrv.network for all programmatic operations.", ["qrv.network", "api.qrv.network", "PostgreSQL registry", "QRVP-1 / QVS-1.0"]],
-  "/security": ["Security", "QR-V uses issuer authorization, cryptographic integrity, revocation, audit logging, TLS, rate limiting, and secure defaults.", ["Issuer authorization", "Cryptographic verification", "Audit logs", "Revocation"]],
-  "/about": ["About QR-V", "QR-V is the verification layer for QR codes: a registry-backed system for confirming authenticity, issuer identity, integrity, and lifecycle state.", ["Mission", "Protocol", "Network", "Commercial Platform"]],
-  "/contact": ["Contact", "Talk with QR-V about certificate verification, issuer onboarding, API integrations, or enterprise deployments.", ["Issuer onboarding", "Enterprise sales", "Developer support", "Partnerships"]],
-  "/terms": ["Terms of Use", "Production terms and platform conditions for QR-V services.", ["Platform terms", "Issuer terms", "Acceptable use", "Verification disclaimer"]],
-  "/privacy": ["Privacy", "QR-V supports public, restricted, and private verification modes and should expose only data authorized for the selected record policy.", ["Public mode", "Restricted mode", "Private mode", "Data handling"]],
+  "/protocol":["QR-V Protocol","QRVP-1 defines how QR-V identifiers resolve into registry-backed verification results.",["Identifier format","Resolution model","Verification states","SHA-256 + Ed25519"]],
+  "/how-it-works":["How QR-V Works","Issue → registry → QR code → scan → API verification → deterministic result.",["Issue record","Generate QR","Resolve QRVID","Display result"]],
+  "/registry":["Registry","Browse public QR-V records without exposing restricted registry data.",["Record lookup","Issuer registry","Certificates","Auditability"]],
+  "/use-cases":["Use Cases","QR-V supports certificates, memberships, products, documents, assets, property, and event credentials.",["Certificates","Memberships","Products","Documents"]],
+  "/developers":["Developers","Integrate with the versioned JSON API at api.qrv.network.",["REST API","Authentication","Webhooks","SDKs"]],
+  "/docs":["Documentation","Protocol, API, security, issuer, and registry documentation.",["QRVP-1","QVS-1.0","API Reference","Security"]],
+  "/pricing":["Pricing","QR-V certificate verification plans are activated through approved issuer onboarding.",["Pilot","Starter","Professional","Enterprise"]],
+  "/network":["Platform Architecture","qrv.network is the browser platform; api.qrv.network is the JSON and registry backend.",["Public platform","API node","Private PostgreSQL","QRVP-1"]],
+  "/security":["Security","QR-V applies fail-closed verification, issuer-scoped operations, signing, revocation, and audit logging.",["Authorization","Integrity","Audit","Revocation"]],
+  "/about":["About QR-V","QR-V is a registry-backed verification layer for QR codes.",["Mission","Protocol","Network","Platform"]],
+  "/contact":["Contact","Contact QR-V for issuer onboarding, integrations, or enterprise deployment.",["Onboarding","Sales","Support","Partnerships"]],
+  "/terms":["Terms of Use","Platform terms and verification conditions.",["Platform terms","Issuer terms","Acceptable use","Disclaimer"]],
+  "/privacy":["Privacy","Public, restricted, and private records expose only authorized fields.",["Public","Restricted","Private","Data handling"]],
 };
 
-const issuerPages = {
-  "/issuer": ["Issuer Portal", "Create and manage registry-backed QR-V records from one consolidated platform.", ["Issue Certificate", "Records", "Revocations", "Analytics"]],
-  "/issuer/login": ["Issuer Login", "Authenticate to access issuer-controlled QR-V workflows.", ["Secure login", "Issuer authorization", "Session controls", "Audit logging"]],
-  "/issuer/dashboard": ["Issuer Dashboard", "Monitor issuance, active records, revocations, verifications, and plan usage.", ["Issued records", "Active records", "Revoked records", "Verification volume"]],
-  "/issuer/records": ["Issuer Records", "Search, view, export, and manage records owned by the authenticated issuer.", ["Search", "View", "Export", "Lifecycle controls"]],
-  "/issuer/certificates": ["Verified Certificates", "Issue verifiable diplomas, training certificates, professional credentials, awards, and compliance certificates.", ["Issue certificate", "Generate QR", "Download proof", "Verify publicly"]],
-  "/issuer/revocations": ["Revocation Center", "Revoke invalid credentials and preserve the lifecycle event in the audit trail.", ["Revoke", "Reason", "Timestamp", "Public result"]],
-  "/issuer/analytics": ["Verification Analytics", "Review verification activity and record usage without exposing restricted verifier data.", ["Verification volume", "Top records", "Trends", "Exports"]],
-  "/issuer/api-keys": ["API Keys", "Create and rotate issuer-scoped API credentials for automated issuance and verification workflows.", ["Create key", "Rotate", "Revoke", "Audit usage"]],
-  "/issuer/billing": ["Billing", "Manage subscription, entitlements, usage, invoices, and enterprise services.", ["Plan", "Usage", "Invoices", "Upgrade"]],
-  "/issuer/settings": ["Issuer Settings", "Manage organization identity, public issuer profile, branding, team access, and security settings.", ["Organization", "Branding", "Team", "Security"]],
-};
+function escapeHtml(value="") { return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;"); }
+function safeEqual(left,right) { const a=Buffer.from(String(left||"")); const b=Buffer.from(String(right||"")); return a.length>0&&a.length===b.length&&crypto.timingSafeEqual(a,b); }
+function normalizeQrvid(value) { try { return decodeURIComponent(String(value||"").trim()).toUpperCase().replace(/\s+/g,""); } catch { return ""; } }
+function normalizeVerificationState(data={}) { return String(data.verificationState||data.status||(data.verified?"VERIFIED":"NOT_FOUND")).toUpperCase(); }
+function parseCookies(header="") { return Object.fromEntries(header.split(";").map(v=>v.trim()).filter(Boolean).map(v=>{const i=v.indexOf("=");return i<0?[v,""]:[v.slice(0,i),decodeURIComponent(v.slice(i+1))];})); }
+function portalConfigured() { const [salt,hash]=PORTAL_PASSWORD_SCRYPT.split(":"); return Boolean(PORTAL_USER&&salt&&/^[a-f0-9]{128}$/i.test(hash||"")&&SESSION_SECRET.length>=32&&WRITE_API_KEY&&ISSUER_ID&&ISSUER_NAME); }
+function signSession(payload) { const body=Buffer.from(JSON.stringify(payload)).toString("base64url"); const signature=crypto.createHmac("sha256",SESSION_SECRET).update(body).digest("base64url"); return `${body}.${signature}`; }
+function readSession(req) { if(!SESSION_SECRET)return null; const token=parseCookies(req.headers.cookie)[SESSION_COOKIE]; if(!token)return null; const [body,signature]=token.split("."); if(!body||!safeEqual(signature,crypto.createHmac("sha256",SESSION_SECRET).update(body).digest("base64url")))return null; try{const value=JSON.parse(Buffer.from(body,"base64url").toString("utf8")); return value.exp>Date.now()&&value.issuerId===ISSUER_ID?value:null;}catch{return null;} }
+function verifyPassword(password) { const [salt,expected]=PORTAL_PASSWORD_SCRYPT.split(":"); if(!salt||!expected)return false; const actual=crypto.scryptSync(String(password||""),salt,64).toString("hex"); return safeEqual(actual,expected); }
+function sessionCookie(token,maxAge=SESSION_TTL_SECONDS) { const secure=process.env.NODE_ENV==="production"?"; Secure":""; return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`; }
+function requireIssuer(req,res,next) { const session=readSession(req); if(!session)return res.redirect(303,`/issuer/login?next=${encodeURIComponent(req.originalUrl)}`); req.issuerSession=session; next(); }
+function verifyCsrf(req,res,next) { if(!safeEqual(req.body?.csrf,req.issuerSession?.csrf))return res.status(403).type("html").send(shell("Request Rejected",`<section class="hero"><span class="status bad">FORBIDDEN</span><h1>Security token rejected.</h1><p>Reload the form and try again.</p></section>`)); next(); }
 
-function escapeHtml(value = "") {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+async function fetchJson(path,options={}) { const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),API_TIMEOUT_MS); const url=/^https:\/\//.test(path)?path:`${API_BASE_URL}${path}`; try { const response=await fetch(url,{...options,signal:controller.signal,headers:{accept:"application/json","user-agent":`QRV-Platform/${VERSION}`,...(options.auth?{"x-api-key":WRITE_API_KEY,"x-issuer-id":ISSUER_ID}:{}) ,...(options.headers||{})}}); const data=await response.json().catch(()=>({})); return {response,data}; } finally { clearTimeout(timer); } }
 
-function shell(title, body, description = "QR-V™ registry-backed verification infrastructure") {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} | QR-V™</title><meta name="description" content="${escapeHtml(description)}"><style>
-  :root{--bg:#020617;--panel:#071a2f;--line:rgba(125,196,255,.22);--text:#eef6ff;--muted:#b8cee8;--blue:#38bdf8;--gold:#f6d46a;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b}*{box-sizing:border-box}body{margin:0;background:radial-gradient(900px 540px at 10% 0%,rgba(56,189,248,.18),transparent 60%),#020617;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.wrap{width:min(1180px,100%);margin:auto;padding:18px}.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid var(--line);border-radius:20px;background:rgba(2,6,23,.88);backdrop-filter:blur(14px)}.brand{text-decoration:none;font-weight:950;letter-spacing:-.02em}.nav{display:flex;gap:4px;flex-wrap:wrap}.nav a,.utility a{color:var(--muted);text-decoration:none;padding:10px 11px;border-radius:12px;font-size:14px;font-weight:800}.nav a:hover,.utility a:hover{background:rgba(56,189,248,.1);color:#fff}.utility{display:flex;gap:6px}.hero{padding:72px 0 28px}.eyebrow{display:inline-block;padding:8px 12px;border:1px solid rgba(246,212,106,.3);border-radius:999px;background:rgba(246,212,106,.09);color:#ffeaa6;font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.hero h1{font-size:clamp(42px,7vw,78px);line-height:1.02;letter-spacing:-.05em;margin:20px 0 14px}.hero p{max-width:860px;color:var(--muted);font-size:19px;line-height:1.7}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}.btn{display:inline-flex;padding:14px 18px;border-radius:15px;text-decoration:none;font-weight:900;background:linear-gradient(180deg,#38bdf8,#2563eb)}.btn.alt{background:rgba(56,189,248,.08);border:1px solid var(--line)}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:26px 0}.card{padding:22px;border-radius:20px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(7,26,47,.9),rgba(2,8,23,.94))}.card h3{margin:0 0 10px}.card p{color:var(--muted);line-height:1.6}.form{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.input{flex:1 1 320px;padding:15px;border-radius:14px;border:1px solid var(--line);font-size:16px}.status{display:inline-block;padding:9px 13px;border-radius:999px;font-size:12px;font-weight:950;letter-spacing:.08em}.ok{background:rgba(34,197,94,.13);border:1px solid rgba(34,197,94,.35);color:#d8ffe2}.bad{background:rgba(239,68,68,.13);border:1px solid rgba(239,68,68,.35);color:#ffd9d9}.warn{background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.35);color:#ffebbd}.row{display:grid;grid-template-columns:180px 1fr;gap:16px;padding:13px 0;border-top:1px solid rgba(125,196,255,.12)}.key{color:#90acd0;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:900}.value{word-break:break-word}.footer{margin-top:50px;padding:28px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;color:var(--muted);font-size:14px}.footer a{color:var(--muted);text-decoration:none}@media(max-width:900px){.top{align-items:flex-start;flex-direction:column}.nav,.utility{width:100%}.grid,.footer{grid-template-columns:1fr 1fr}}@media(max-width:580px){.wrap{padding:10px}.nav{display:grid;grid-template-columns:1fr 1fr}.grid,.footer{grid-template-columns:1fr}.row{grid-template-columns:1fr}.hero{padding-top:44px}}
-  </style></head><body><div class="wrap"><header class="top"><a class="brand" href="/">QR-V™ Network</a><nav class="nav">${primaryNav.map(([label,href])=>`<a href="${href}">${label}</a>`).join("")}</nav><div class="utility"><a href="/status">Status</a><a href="/issuer/login">Login</a></div></header>${body}<footer class="footer"><div><strong>Platform</strong><p><a href="/verify">Verify</a></p><p><a href="/issuer">Issuer</a></p><p><a href="/registry">Registry</a></p></div><div><strong>Technology</strong><p><a href="/protocol">QRVP-1</a></p><p><a href="/security">Security</a></p><p><a href="/network">Architecture</a></p></div><div><strong>Resources</strong><p><a href="/docs">Docs</a></p><p><a href="/developers">Developers</a></p><p><a href="/status">Status</a></p></div><div><strong>Company</strong><p><a href="/about">About</a></p><p><a href="/contact">Contact</a></p><p><a href="/privacy">Privacy</a></p></div></footer></div></body></html>`;
-}
+function shell(title,body,description="QR-V™ registry-backed verification infrastructure") { return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} | QR-V™</title><meta name="description" content="${escapeHtml(description)}"><style>:root{--bg:#020617;--line:rgba(125,196,255,.22);--text:#eef6ff;--muted:#b8cee8}*{box-sizing:border-box}body{margin:0;background:#020617;color:var(--text);font-family:system-ui,sans-serif}.wrap{width:min(1120px,100%);margin:auto;padding:18px}.top{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px;border:1px solid var(--line);border-radius:18px}.nav{display:flex;gap:8px;flex-wrap:wrap}a{color:#7dd3fc}.nav a{padding:8px;text-decoration:none;color:var(--muted)}.hero{padding:58px 0 24px}.hero h1{font-size:clamp(38px,6vw,68px);margin:16px 0}.hero p,.card p{color:var(--muted);line-height:1.65}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.card{padding:22px;border:1px solid var(--line);border-radius:18px;background:#071a2f}.form{display:grid;gap:14px;max-width:760px}.input,select,textarea{width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);font:inherit}.btn{display:inline-block;border:0;border-radius:12px;padding:12px 16px;background:#2563eb;color:white;font-weight:800;text-decoration:none;cursor:pointer}.btn.alt{background:#17304e}.status{display:inline-block;padding:8px 12px;border-radius:999px;font-weight:900}.ok{background:#14532d}.bad{background:#7f1d1d}.warn{background:#78350f}.row{display:grid;grid-template-columns:180px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px;border-bottom:1px solid var(--line)}.footer{margin-top:48px;padding:28px 0;border-top:1px solid var(--line);color:var(--muted)}@media(max-width:650px){.row{grid-template-columns:1fr}table{display:block;overflow:auto}}</style></head><body><div class="wrap"><header class="top"><a href="/"><strong>QR-V™ Network</strong></a><nav class="nav">${primaryNav.map(([l,h])=>`<a href="${h}">${l}</a>`).join("")}<a href="/status">Status</a></nav></header>${body}<footer class="footer">QR-V™ • qrv.network • API operations remain private behind api.qrv.network</footer></div></body></html>`; }
+function cards(items){return `<section class="grid">${items.map(x=>`<article class="card"><h3>${escapeHtml(x)}</h3><p>Part of the consolidated QR-V platform.</p></article>`).join("")}</section>`;}
+function standardPage([title,description,items]){return shell(title,`<section class="hero"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p></section>${cards(items)}`,description);}
+function homePage(){return shell("Global Verification Network",`<section class="hero"><span class="status ok">QRVP-1 • QVS-1.0</span><h1>Verify records. Confirm authenticity.</h1><p>All browser-facing verification, issuer, registry, documentation, and status routes are consolidated at qrv.network. api.qrv.network is the JSON and registry backend.</p><p><a class="btn" href="/verify">Verify a Record</a> <a class="btn alt" href="/issuer">Issuer Portal</a></p></section>${cards(["Verified Certificates","Membership Verification","Product Authentication","Document Verification"])}`);}
+function verifyForm(){return shell("Verify a Record",`<section class="hero"><h1>Verify a QR-V record.</h1><form class="form" action="/verify" method="get"><input class="input" name="qrvid" placeholder="QRV-PROD-CERT-000001" required><button class="btn">Verify</button></form><p><a href="/verify/${encodeURIComponent(DEMO_QRVID)}">Open live demo</a></p></section>`);}
+function loginPage(message=""){return shell("Issuer Login",`<section class="hero"><h1>Issuer Login</h1><p>Authorized issuer access only.</p>${message?`<p class="status bad">${escapeHtml(message)}</p>`:""}${portalConfigured()?`<form class="form" method="post" action="/issuer/login"><label>Username<input class="input" name="username" autocomplete="username" required></label><label>Password<input class="input" type="password" name="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form>`:`<p class="status bad">Issuer authentication is not configured. Access remains closed.</p>`}</section>`);}
+function issuerNav(){return `<p><a href="/issuer/dashboard">Dashboard</a> · <a href="/issuer/records">Records</a> · <a href="/issuer/records/new">Issue certificate</a> · <a href="/issuer/revocations">Revocations</a></p>`;}
 
-function cards(items) {
-  return `<section class="grid">${items.map((item)=>`<article class="card"><h3>${escapeHtml(item)}</h3><p>Part of the consolidated QR-V production platform at qrv.network.</p></article>`).join("")}</section>`;
-}
+async function verificationResult(qrvid){const normalized=normalizeQrvid(qrvid); if(!QRVID_FORMAT.test(normalized))return {httpStatus:422,html:shell("Invalid QRVID",`<section class="hero"><span class="status bad">INVALID</span><h1>Invalid QRVID format.</h1></section>`)}; try{const {response,data}=await fetchJson(`/verify/${encodeURIComponent(normalized)}`); const state=normalizeVerificationState(data); const css=state==="VERIFIED"?"ok":state==="EXPIRED"?"warn":"bad"; return {httpStatus:response.status,html:shell("Verification Result",`<section class="hero"><span class="status ${css}">${escapeHtml(state)}</span><h1>${state==="VERIFIED"?"Record verified.":"Verification result."}</h1></section><section class="card"><div class="row"><b>QRVID</b><span>${escapeHtml(data.qrvid||normalized)}</span></div><div class="row"><b>Issuer</b><span>${escapeHtml(data.issuer||"Not disclosed")}</span></div><div class="row"><b>Record type</b><span>${escapeHtml(data.recordType||"Not disclosed")}</span></div><div class="row"><b>Subject</b><span>${escapeHtml(data.subject||"Restricted")}</span></div></section>`)};}catch{return {httpStatus:503,html:shell("Verification Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Verification is temporarily unavailable.</h1><p>No verification claim has been made.</p></section>`)}}}
 
-function standardPage([title, description, items]) {
-  return shell(title, `<section class="hero"><span class="eyebrow">QR-V™ Global Verification Network</span><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p><div class="actions"><a class="btn" href="/verify">Verify a Record</a><a class="btn alt" href="/issuer">Become an Issuer</a></div></section>${cards(items)}`, description);
-}
+app.get("/",(_q,res)=>res.type("html").send(homePage()));
+for(const [path,page] of Object.entries(pages))app.get(path,(_q,res)=>res.type("html").send(standardPage(page)));
+app.get("/verify",(req,res)=>{const id=normalizeQrvid(req.query.qrvid);return id?res.redirect(302,`/verify/${encodeURIComponent(id)}`):res.type("html").send(verifyForm());});
+app.get("/verify/:qrvid",async(req,res)=>{const result=await verificationResult(req.params.qrvid);res.status(result.httpStatus).type("html").send(result.html);});
+app.get("/registry/:qrvid",async(req,res)=>{try{const {response,data}=await fetchJson(`/registry/${encodeURIComponent(normalizeQrvid(req.params.qrvid))}`);res.status(response.status).type("html").send(shell("Registry Record",`<section class="hero"><h1>Registry record</h1></section><section class="card"><pre>${escapeHtml(JSON.stringify(data,null,2))}</pre></section>`));}catch{res.status(503).type("html").send(shell("Registry Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Registry lookup unavailable.</h1></section>`));}});
+app.get("/explorer",(_q,res)=>res.redirect(308,"/registry"));
+app.get("/explorer/:qrvid",(req,res)=>res.redirect(308,`/registry/${encodeURIComponent(req.params.qrvid)}`));
+app.get("/store",(_q,res)=>res.redirect(308,"/pricing"));
+app.get("/qr/:qrvid.svg",async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);if(!QRVID_FORMAT.test(id))return res.status(422).send("Invalid QRVID");try{const svg=await QRCode.toString(`${ROOT_URL}/verify/${encodeURIComponent(id)}`,{type:"svg",errorCorrectionLevel:"M",margin:4});return res.type("image/svg+xml").send(svg);}catch{return res.status(500).send("QR generation failed");}});
 
-function homePage() {
-  return shell("Global Verification Network", `<section class="hero"><span class="eyebrow">QRVP-1 • QVS-1.0 • Production Platform</span><h1>Verify records. Confirm authenticity. Trust the issuer.</h1><p>QR-V turns QR codes into registry-backed verification references. The public platform, issuer experience, registry explorer, documentation, pricing, status, and verification interface are consolidated at <strong>qrv.network</strong>. The only separate production service is the JSON API at <strong>api.qrv.network</strong>.</p><div class="actions"><a class="btn" href="/verify">Verify a Record</a><a class="btn alt" href="/issuer">Issuer Portal</a><a class="btn alt" href="/pricing">Pricing</a></div></section>${cards(["Verified Certificates","Membership Verification","Product Authentication","Document Verification"])}<section class="card"><h3>Two-node production architecture</h3><div class="row"><div class="key">Platform Node</div><div class="value">${ROOT_URL} — all browser-facing routes</div></div><div class="row"><div class="key">API Node</div><div class="value">${API_BASE_URL.replace(/\/api\/v1$/,"")} — all JSON/API operations</div></div><div class="row"><div class="key">Registry</div><div class="value">PostgreSQL accessed by api.qrv.network only</div></div></section>`);
-}
+app.get("/issuer",(req,res)=>res.redirect(302,readSession(req)?"/issuer/dashboard":"/issuer/login"));
+app.get("/issuer/login",(req,res)=>readSession(req)?res.redirect(302,"/issuer/dashboard"):res.type("html").send(loginPage()));
+app.post("/issuer/login",(req,res)=>{const key=req.ip||"unknown";const state=loginAttempts.get(key)||{count:0,resetAt:Date.now()+15*60*1000};if(state.resetAt<Date.now()){state.count=0;state.resetAt=Date.now()+15*60*1000;}if(state.count>=8)return res.status(429).type("html").send(loginPage("Too many attempts. Try again later."));if(!portalConfigured())return res.status(503).type("html").send(loginPage("Issuer authentication is not configured.")); if(!safeEqual(req.body.username,PORTAL_USER)||!verifyPassword(req.body.password)){state.count+=1;loginAttempts.set(key,state);return res.status(401).type("html").send(loginPage("Invalid credentials."));}loginAttempts.delete(key);const session={sub:PORTAL_USER,issuerId:ISSUER_ID,role:"issuer_admin",csrf:crypto.randomBytes(24).toString("base64url"),exp:Date.now()+SESSION_TTL_SECONDS*1000}; res.setHeader("Set-Cookie",sessionCookie(signSession(session))); return res.redirect(303,"/issuer/dashboard");});
+app.post("/issuer/logout",requireIssuer,verifyCsrf,(req,res)=>{res.setHeader("Set-Cookie",sessionCookie("",0));res.redirect(303,"/issuer/login");});
 
-function verifyForm() {
-  return shell("Verify a Record", `<section class="hero"><span class="eyebrow">Public Verification</span><h1>Verify a QR-V record.</h1><p>Enter a QRVID to resolve its canonical registry state through api.qrv.network.</p><form class="form" action="/verify" method="get"><input class="input" name="qrvid" placeholder="QRV-PROD-CERT-000001" autocomplete="off"><button class="btn" type="submit">Verify</button></form><div class="actions"><a class="btn alt" href="/verify/${encodeURIComponent(DEMO_QRVID)}">Open Live Demo</a></div></section>`);
-}
+app.get("/issuer/dashboard",requireIssuer,async(req,res)=>{try{const {response,data}=await fetchJson("/issuer/analytics",{auth:true});if(!response.ok)throw new Error("API unavailable");res.type("html").send(shell("Issuer Dashboard",`<section class="hero"><h1>Issuer Dashboard</h1><p>${escapeHtml(ISSUER_NAME)}</p>${issuerNav()}</section><section class="grid">${[["Total",data.total],["Active",data.active],["Revoked",data.revoked],["Expired",data.expired]].map(([k,v])=>`<article class="card"><h3>${escapeHtml(k)}</h3><p>${Number(v||0)}</p></article>`).join("")}</section><form method="post" action="/issuer/logout"><input type="hidden" name="csrf" value="${escapeHtml(req.issuerSession.csrf)}"><button class="btn alt">Sign out</button></form>`));}catch{res.status(503).type("html").send(shell("Issuer Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Issuer API unavailable.</h1><p>No changes were made.</p></section>`));}});
+app.get("/issuer/records",requireIssuer,async(_req,res)=>{try{const {response,data}=await fetchJson("/issuer/records",{auth:true});if(!response.ok)throw new Error();const rows=(data.records||[]).map(r=>`<tr><td><a href="/issuer/records/${encodeURIComponent(r.qrvid)}">${escapeHtml(r.qrvid)}</a></td><td>${escapeHtml(r.title||"")}</td><td>${escapeHtml(r.status)}</td><td>${escapeHtml(r.visibility)}</td></tr>`).join("");res.type("html").send(shell("Issuer Records",`<section class="hero"><h1>Issuer Records</h1>${issuerNav()}<p><a class="btn" href="/issuer/records/new">Issue certificate</a></p></section><section class="card"><table><thead><tr><th>QRVID</th><th>Title</th><th>Status</th><th>Visibility</th></tr></thead><tbody>${rows||"<tr><td colspan=4>No records.</td></tr>"}</tbody></table></section>`));}catch{res.status(503).type("html").send(shell("Records Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Records are unavailable.</h1></section>`));}});
+app.get("/issuer/records/new",requireIssuer,(req,res)=>res.type("html").send(shell("Issue Certificate",`<section class="hero"><h1>Issue Certificate</h1>${issuerNav()}</section><section class="card"><form class="form" method="post" action="/issuer/records/new"><input type="hidden" name="csrf" value="${escapeHtml(req.issuerSession.csrf)}"><label>Recipient name<input class="input" name="subject" required></label><label>Certificate title<input class="input" name="title" required></label><label>Description<textarea name="description"></textarea></label><label>Expiration date<input class="input" type="date" name="expiresAt"></label><label>Visibility<select name="visibility"><option value="public">Public</option><option value="restricted">Restricted</option><option value="private">Private</option></select></label><button class="btn">Issue certificate</button></form></section>`)));
+app.post("/issuer/records/new",requireIssuer,verifyCsrf,async(req,res)=>{try{const body={recordType:"CERT",issuer:ISSUER_NAME,subject:String(req.body.subject||"").trim(),title:String(req.body.title||"").trim(),description:String(req.body.description||"").trim(),expiresAt:req.body.expiresAt||null,visibility:req.body.visibility||"public"};const {response,data}=await fetchJson("/registry/create",{method:"POST",auth:true,headers:{"content-type":"application/json"},body:JSON.stringify(body)});if(!response.ok)return res.status(response.status).type("html").send(shell("Issuance Failed",`<section class="hero"><span class="status bad">FAILED</span><h1>Certificate was not issued.</h1><pre>${escapeHtml(JSON.stringify(data,null,2))}</pre></section>`));return res.redirect(303,`/issuer/records/${encodeURIComponent(data.qrvid)}`);}catch{return res.status(503).type("html").send(shell("Issuance Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Certificate was not issued.</h1></section>`));}});
+app.get("/issuer/records/:qrvid",requireIssuer,async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);try{const {response,data}=await fetchJson(`/issuer/records/${encodeURIComponent(id)}`,{auth:true});if(!response.ok)return res.status(response.status).type("html").send(shell("Record Not Found",`<section class="hero"><h1>Record not found.</h1></section>`));const r=data.record||{};res.type("html").send(shell("Issuer Record",`<section class="hero"><h1>${escapeHtml(id)}</h1>${issuerNav()}</section><section class="card"><div class="row"><b>Title</b><span>${escapeHtml(r.title)}</span></div><div class="row"><b>Subject</b><span>${escapeHtml(r.owner)}</span></div><div class="row"><b>Status</b><span>${escapeHtml(r.status)}</span></div><div class="row"><b>Verification</b><a href="/verify/${encodeURIComponent(id)}">${escapeHtml(ROOT_URL)}/verify/${escapeHtml(id)}</a></div></section><section class="card"><h2>Revoke</h2><form class="form" method="post" action="/issuer/records/${encodeURIComponent(id)}/revoke"><input type="hidden" name="csrf" value="${escapeHtml(req.issuerSession.csrf)}"><label>Reason<textarea name="reason" required></textarea></label><button class="btn">Revoke record</button></form></section>`));}catch{res.status(503).type("html").send(shell("Record Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Record unavailable.</h1></section>`));}});
+app.post("/issuer/records/:qrvid/revoke",requireIssuer,verifyCsrf,async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);try{const {response,data}=await fetchJson(`/registry/${encodeURIComponent(id)}/revoke`,{method:"POST",auth:true,headers:{"content-type":"application/json"},body:JSON.stringify({reason:String(req.body.reason||"").trim()})});if(!response.ok)return res.status(response.status).json(data);return res.redirect(303,`/issuer/records/${encodeURIComponent(id)}`);}catch{return res.status(503).json({ok:false,error:"API_UNAVAILABLE"});}});
+app.get("/issuer/certificates",requireIssuer,(_q,res)=>res.redirect(302,"/issuer/records"));
+app.get("/issuer/certificates/new",requireIssuer,(_q,res)=>res.redirect(302,"/issuer/records/new"));
+app.get("/issuer/revocations",requireIssuer,(_q,res)=>res.redirect(302,"/issuer/records"));
+for(const path of ["/issuer/analytics","/issuer/api-keys","/issuer/team","/issuer/billing","/issuer/settings","/issuer/support"]){app.get(path,requireIssuer,(_q,res)=>res.type("html").send(shell("Issuer Control",`<section class="hero"><h1>${escapeHtml(path.split("/").pop().replace(/-/g," "))}</h1>${issuerNav()}<p>This control is restricted and fails closed until its production provider is configured.</p></section>`)));}
 
-async function verificationResult(qrvid) {
-  const normalized = String(qrvid || "").trim().toUpperCase();
-  const apiUrl = `${API_BASE_URL}/verify/${encodeURIComponent(normalized)}`;
-  try {
-    const response = await fetch(apiUrl, { headers: { accept: "application/json", "user-agent": "QRV-Platform/2.0" } });
-    const data = await response.json().catch(() => ({}));
-    const status = String(data.status || data.verificationStatus || (data.verified ? "VERIFIED" : "NOT_FOUND")).toUpperCase();
-    const css = status === "VERIFIED" ? "ok" : status === "EXPIRED" ? "warn" : "bad";
-    return { httpStatus: response.status, html: shell("Verification Result", `<section class="hero"><span class="status ${css}">${escapeHtml(status)}</span><h1>${status === "VERIFIED" ? "Record verified." : "Verification result."}</h1><p>The result below was resolved through the canonical QR-V API.</p></section><section class="card"><div class="row"><div class="key">QRVID</div><div class="value">${escapeHtml(data.qrvid || normalized)}</div></div><div class="row"><div class="key">Issuer</div><div class="value">${escapeHtml(data.issuer || data.issuerName || "Not provided")}</div></div><div class="row"><div class="key">Record Type</div><div class="value">${escapeHtml(data.recordType || data.type || "Not provided")}</div></div><div class="row"><div class="key">Subject</div><div class="value">${escapeHtml(data.subject || data.owner || "Not provided")}</div></div><div class="row"><div class="key">Hash</div><div class="value">${escapeHtml(data.hash || data.recordHash || "Not provided")}</div></div><div class="row"><div class="key">Verified At</div><div class="value">${escapeHtml(data.timestamp || data.checkedAt || new Date().toISOString())}</div></div></section>`) };
-  } catch (_error) {
-    return { httpStatus: 503, html: shell("Verification Unavailable", `<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Verification is temporarily unavailable.</h1><p>The platform could not reach the QR-V API. No verification claim has been made.</p></section>`) };
-  }
-}
+app.get("/status",async(_req,res)=>{try{const {response}=await fetchJson(`${API_ROOT_URL}/healthz`);res.type("html").send(shell("Network Status",`<section class="hero"><h1>Network status</h1></section><section class="grid"><article class="card"><h3>qrv.network</h3><span class="status ok">OPERATIONAL</span></article><article class="card"><h3>api.qrv.network</h3><span class="status ${response.ok?"ok":"bad"}">${response.ok?"OPERATIONAL":`HTTP ${response.status}`}</span></article></section>`));}catch{res.status(503).type("html").send(shell("Network Status",`<section class="hero"><h1>Network status</h1><span class="status bad">API UNAVAILABLE</span></section>`));}});
+app.get("/health",(_q,res)=>res.json({ok:true,service:SERVICE_NAME,status:"running",version:VERSION,startedAt:STARTED_AT,timestamp:new Date().toISOString()}));
+app.get("/healthz",(_q,res)=>res.json({ok:true,service:SERVICE_NAME,status:"healthy",version:VERSION}));
+app.get(["/ready","/readyz"],async(_q,res)=>{if(!portalConfigured())return res.status(503).json({ok:false,ready:false,service:SERVICE_NAME,error:"ISSUER_CONFIGURATION_REQUIRED"});try{const {response}=await fetchJson(`${API_ROOT_URL}/readyz`);return res.status(response.ok?200:503).json({ok:response.ok,ready:response.ok,service:SERVICE_NAME,apiReady:response.ok});}catch{return res.status(503).json({ok:false,ready:false,service:SERVICE_NAME,error:"API_UNAVAILABLE"});}});
+app.get("/version",(_q,res)=>res.json({service:SERVICE_NAME,version:VERSION,architecture:"two-node",startedAt:STARTED_AT}));
+app.get("/robots.txt",(_q,res)=>res.type("text/plain").send("User-agent: *\nAllow: /\nDisallow: /issuer/dashboard\nDisallow: /issuer/records\nSitemap: https://qrv.network/sitemap.xml\n"));
+app.get("/sitemap.xml",(_q,res)=>{const paths=["/","/protocol","/how-it-works","/verify","/registry","/use-cases","/developers","/docs","/pricing","/about","/security","/status"];res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map(path=>`<url><loc>${ROOT_URL}${path}</loc></url>`).join("")}</urlset>`);});
+app.get("/:qrvid",(req,res,next)=>{const id=normalizeQrvid(req.params.qrvid);return QRVID_FORMAT.test(id)?res.redirect(308,`/verify/${encodeURIComponent(id)}`):next();});
+app.use((_q,res)=>res.status(404).type("html").send(shell("Not Found",`<section class="hero"><span class="status bad">404</span><h1>Page not found.</h1></section>`)));
+app.use((_error,_req,res,_next)=>res.status(500).type("html").send(shell("Platform Error",`<section class="hero"><span class="status bad">ERROR</span><h1>The request could not be completed.</h1></section>`)));
 
-async function registrySearch(qrvid) {
-  const normalized = String(qrvid || "").trim().toUpperCase();
-  const apiUrl = `${API_BASE_URL}/registry/${encodeURIComponent(normalized)}`;
-  try {
-    const response = await fetch(apiUrl, { headers: { accept: "application/json", "user-agent": "QRV-Platform/2.0" } });
-    const data = await response.json().catch(() => ({}));
-    return { httpStatus: response.status, html: shell("Registry Record", `<section class="hero"><span class="eyebrow">Registry Explorer</span><h1>${escapeHtml(normalized)}</h1><p>Canonical record data returned by api.qrv.network.</p></section><section class="card"><pre style="white-space:pre-wrap;word-break:break-word;color:#dbeafe">${escapeHtml(JSON.stringify(data,null,2))}</pre></section>`) };
-  } catch (_error) {
-    return { httpStatus: 503, html: shell("Registry Unavailable", `<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Registry lookup unavailable.</h1></section>`) };
-  }
-}
-
-app.get("/", (_req, res) => res.type("html").send(homePage()));
-
-for (const [path, page] of Object.entries(pages)) {
-  app.get(path, (_req, res) => res.type("html").send(standardPage(page)));
-}
-for (const [path, page] of Object.entries(issuerPages)) {
-  app.get(path, (_req, res) => res.type("html").send(standardPage(page)));
-}
-
-app.get("/verify", async (req, res) => {
-  const qrvid = String(req.query.qrvid || "").trim();
-  if (!qrvid) return res.type("html").send(verifyForm());
-  return res.redirect(302, `/verify/${encodeURIComponent(qrvid)}`);
-});
-app.get("/verify/:qrvid", async (req, res) => {
-  const result = await verificationResult(req.params.qrvid);
-  return res.status(result.httpStatus).type("html").send(result.html);
-});
-app.get("/registry/:qrvid", async (req, res) => {
-  const result = await registrySearch(req.params.qrvid);
-  return res.status(result.httpStatus).type("html").send(result.html);
-});
-app.get("/explorer", (_req, res) => res.redirect(302, "/registry"));
-app.get("/store", (_req, res) => res.redirect(302, "/pricing"));
-
-app.get("/status", async (_req, res) => {
-  const apiRoot = API_BASE_URL.replace(/\/api\/v1$/, "");
-  let apiState = "UNKNOWN";
-  let css = "warn";
-  try {
-    const response = await fetch(`${apiRoot}/healthz`, { headers: { accept: "application/json", "user-agent": "QRV-Platform/2.0" } });
-    apiState = response.ok ? "OPERATIONAL" : `HTTP ${response.status}`;
-    css = response.ok ? "ok" : "bad";
-  } catch (_error) {
-    apiState = "UNAVAILABLE";
-    css = "bad";
-  }
-  return res.type("html").send(shell("Network Status", `<section class="hero"><span class="eyebrow">Network Status</span><h1>QR-V production status.</h1><p>The consolidated architecture has one public platform node and one API node.</p></section><section class="grid"><article class="card"><h3>qrv.network</h3><span class="status ok">OPERATIONAL</span><p>Public platform and all browser routes.</p></article><article class="card"><h3>api.qrv.network</h3><span class="status ${css}">${escapeHtml(apiState)}</span><p>JSON API, registry access, issuance, verification, revocation, and audit operations.</p></article></section>`));
-});
-
-app.get("/health", (_req, res) => res.json({ ok: true, service: SERVICE_NAME, status: "running", version: VERSION, architecture: "two-node", publicBaseUrl: ROOT_URL, apiBaseUrl: API_BASE_URL, startedAt: STARTED_AT, timestamp: new Date().toISOString() }));
-app.get("/healthz", (_req, res) => res.json({ ok: true, service: SERVICE_NAME, status: "healthy", version: VERSION }));
-app.get("/ready", (_req, res) => res.json({ ok: true, service: SERVICE_NAME, ready: true, apiBaseUrl: API_BASE_URL }));
-app.get("/readyz", (_req, res) => res.json({ ok: true, service: SERVICE_NAME, ready: true, apiBaseUrl: API_BASE_URL }));
-app.get("/version", (_req, res) => res.json({ service: SERVICE_NAME, version: VERSION, architecture: "two-node", startedAt: STARTED_AT }));
-
-app.use((_req, res) => res.status(404).type("html").send(shell("Not Found", `<section class="hero"><span class="status bad">404</span><h1>Page not found.</h1><p>Return to <a href="/">qrv.network</a>.</p></section>`)));
-
-const PORT = Number(process.env.PORT || 3000);
-app.listen(PORT, "0.0.0.0", () => console.log(`QR-V consolidated platform running on 0.0.0.0:${PORT}`));
+const server=process.env.NODE_ENV==="test"?null:app.listen(Number(process.env.PORT||3000),"0.0.0.0",()=>console.log(`QR-V platform ${VERSION} running`));
+export { app, fetchJson, normalizeQrvid, normalizeVerificationState, safeEqual, verificationResult };
+export default server;

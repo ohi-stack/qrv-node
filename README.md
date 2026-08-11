@@ -79,11 +79,21 @@ qrv.network/issuer
 NODE_ENV=production
 PORT=3000
 SERVICE_NAME=qrv-platform
-SERVICE_VERSION=2.0.0
+SERVICE_VERSION=2.1.0
 QRV_PUBLIC_BASE_URL=https://qrv.network
 QRV_API_BASE_URL=https://api.qrv.network/api/v1
 DEMO_QRVID=QRV-PROD-CERT-000001
+QRV_API_TIMEOUT_MS=7000
+QRV_WRITE_API_KEY=<server-side API key>
+QRV_ISSUER_ID=<issuer id>
+QRV_ISSUER_NAME=<issuer display name>
+ISSUER_PORTAL_USERNAME=<issuer administrator username>
+ISSUER_PORTAL_PASSWORD_SCRYPT=<salt:derived hex>
+ISSUER_SESSION_SECRET=<minimum 32-character secret>
+ISSUER_SESSION_TTL_SECONDS=28800
 ```
+
+Issuer secrets remain server-side. Login is disabled and readiness returns 503 until the complete issuer configuration is present. Sessions use signed, HTTP-only, same-site cookies; mutations require a session-bound CSRF token; API calls have a bounded timeout.
 
 ## Hostinger
 

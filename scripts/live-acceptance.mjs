@@ -1,6 +1,6 @@
 const rootBase = (process.env.QRV_NODE_URL || "https://qrv.network").replace(/\/$/, "");
 const apiBase = (process.env.QRV_API_URL || "https://api.qrv.network").replace(/\/$/, "");
-const demoQrvid = process.env.QRV_DEMO_QRVID || "QRV-PROD-CERT-000001";
+const demoQrvid = process.env.DEMO_QRVID || process.env.QRV_DEMO_QRVID || "QRV-PROD-CERT-000001";
 const timeoutMs = Number(process.env.QRV_ACCEPTANCE_TIMEOUT_MS || 10000);
 
 const checks = [
