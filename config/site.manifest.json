@@ -1,0 +1,25 @@
+{
+  "platform": "QR-V Global Verification Network",
+  "domain": "https://qrv.network",
+  "protocol": "QRVP-1",
+  "standard": "QVS-1.0",
+  "service": "qrv-platform",
+  "publicRoutes": ["/", "/protocol", "/how-it-works", "/verify", "/registry", "/explorer", "/use-cases", "/developers", "/docs", "/api-reference", "/pricing", "/status", "/network", "/store", "/about", "/security", "/standards", "/enterprise", "/certificate-verification", "/contact", "/terms", "/privacy"],
+  "issuerRoutes": ["/issuer", "/issuer/dashboard", "/issuer/records", "/issuer/records/new", "/issuer/logout"],
+  "healthRoutes": ["/health", "/healthz", "/readyz", "/version"],
+  "canonicalServices": {
+    "platform": "https://qrv.network",
+    "api": "https://api.qrv.network"
+  },
+  "legacyHosts": {
+    "verify.qrv.network": "/verify",
+    "issuer.qrv.network": "/issuer",
+    "registry.qrv.network": "/registry",
+    "explorer.qrv.network": "/explorer",
+    "docs.qrv.network": "/docs",
+    "developers.qrv.network": "/developers",
+    "status.qrv.network": "/status",
+    "store.qrv.network": "/store"
+  },
+  "commercialPriority": ["issuer-portal", "verified-certificates", "membership-verification", "product-authentication", "api-platform", "white-label"]
+}
