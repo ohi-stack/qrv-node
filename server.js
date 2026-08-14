@@ -7,13 +7,32 @@ import QRCode from "qrcode";
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      connectSrc: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+      imgSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'"],
+    },
+  },
+}));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false, limit: "64kb" }));
+app.use("/assets", express.static(new URL("./public", import.meta.url).pathname, {
+  fallthrough: false,
+  immutable: false,
+  maxAge: "1d",
+}));
 app.use(rateLimit({ windowMs: 60_000, limit: 240, standardHeaders: "draft-7", legacyHeaders: false }));
 
 const SERVICE_NAME = process.env.SERVICE_NAME || "qrv-platform";
-const VERSION = process.env.SERVICE_VERSION || "2.2.0";
+const VERSION = process.env.SERVICE_VERSION || "2.3.0";
 const STARTED_AT = new Date().toISOString();
 const ROOT_URL = process.env.QRV_PUBLIC_BASE_URL || "https://qrv.network";
 const API_BASE_URL = (process.env.QRV_API_BASE_URL || "https://api.qrv.network/api/v1").replace(/\/$/, "");
@@ -98,6 +117,59 @@ function contactCardPanel(data={}) { const contact=data.contact; if(!contact)ret
 
 async function verificationResult(qrvid){const normalized=normalizeQrvid(qrvid); if(!QRVID_FORMAT.test(normalized))return {httpStatus:422,html:shell("Invalid QRVID",`<section class="hero"><span class="status bad">INVALID</span><h1>Invalid QRVID format.</h1></section>`)}; try{const {response,data}=await fetchJson(`/verify/${encodeURIComponent(normalized)}`); const state=normalizeVerificationState(data); data.verificationState=state; const css=state==="VERIFIED"?"ok":state==="EXPIRED"?"warn":"bad"; return {httpStatus:response.status,html:shell("Verification Result",`<section class="hero"><span class="status ${css}">${escapeHtml(state)}</span><h1>${state==="VERIFIED"?"Record verified.":"Verification result."}</h1><p>${state==="VERIFIED"?"The registry payload and Ed25519 signature passed integrity checks.":"No active verification claim is being presented."}</p></section><section class="card"><div class="row"><b>QRVID</b><span>${escapeHtml(data.qrvid||normalized)}</span></div><div class="row"><b>Issuer</b><span>${escapeHtml(data.issuer||"Not disclosed")}</span></div><div class="row"><b>Record type</b><span>${escapeHtml(data.recordType||"Not disclosed")}</span></div><div class="row"><b>Subject</b><span>${escapeHtml(data.subject||"Restricted")}</span></div></section>${contactCardPanel(data)}`)};}catch{return {httpStatus:503,html:shell("Verification Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Verification is temporarily unavailable.</h1><p>No verification claim has been made.</p></section>`)}}}
 
+const megaMenus = [
+  ["Platform", "Public trust layer", [["Verify a Record", "/verify"], ["Public Registry", "/registry"], ["How It Works", "/how-it-works"], ["Network Status", "/status"]]],
+  ["Issuers", "Commercial application", [["Issuer Portal", "/issuer"], ["Plans & Pricing", "/pricing"], ["Verification Products", "/products"], ["Request Issuer Access", "/contact"]]],
+  ["Solutions", "Authorized record classes", [["Certificates & Credentials", "/use-cases#cert"], ["Verified Contact Cards", "/products/verified-contact-card"], ["Documents & Records", "/use-cases#doc"], ["Products, Property & Assets", "/use-cases#prod"]]],
+  ["Developers", "Integration resources", [["Developer Portal", "/developers"], ["Documentation", "/docs"], ["API Architecture", "/network"], ["Security Model", "/security"]]],
+  ["Standards", "Protocol and governance", [["QRVP-1 Protocol", "/protocol"], ["QVS-1.0 Standard", "/docs#record-states"], ["Trust & Security", "/security"], ["Network Architecture", "/network"]]],
+  ["Company", "Organization and origin", [["About QR-V", "/about"], ["Contact", "/contact"], ["Pricing", "/pricing"], ["Terms & Privacy", "/terms"]]],
+];
+
+function renderHeader() {
+  const groups = megaMenus.map(([label, eyebrow, links]) => `<details class="nav-group"><summary>${escapeHtml(label)}<span aria-hidden="true">⌄</span></summary><div class="mega-menu"><div class="mega-intro"><small>${escapeHtml(eyebrow)}</small><strong>${escapeHtml(label)}</strong><p>Explore QR-V infrastructure, workflows, standards, and production services.</p></div><div class="mega-links">${links.map(([name, href], index) => `<a href="${href}"><span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(name)}</strong><i aria-hidden="true">↗</i></a>`).join("")}</div><a class="mega-feature" href="/verify/${encodeURIComponent(DEMO_QRVID)}"><small>Live demonstration</small><strong>Test the canonical QR-V record.</strong><span>${escapeHtml(DEMO_QRVID)}</span><b>Run verification →</b></a></div></details>`).join("");
+  return `<header class="site-header"><a class="brand-logo" href="/" aria-label="QR-V Global Verification Network home"><img src="/assets/qrv-global-verification-logo.png" width="1077" height="375" alt="QR-V Global Verification Network"></a><button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-navigation"><span></span><span></span><span></span><b class="sr-only">Menu</b></button><nav id="primary-navigation" aria-label="Primary navigation">${groups}</nav><a class="button header-cta" href="/verify">Verify a Record</a></header>`;
+}
+
+function renderFooter() {
+  return `<button class="back-to-top" type="button" aria-label="Back to top" title="Back to top">↑</button><footer class="site-footer"><div class="footer-lead"><a class="footer-logo" href="/"><img src="/assets/qrv-global-verification-logo.png" width="1077" height="375" alt="QR-V Global Verification Network"></a><p>Registry-backed verification infrastructure for records that need to be trusted.</p><span>QRVP-1 Protocol · QVS-1.0 Standard</span></div><div><strong>Platform</strong><a href="/verify">Verify</a><a href="/registry">Registry</a><a href="/issuer">Issuer access</a><a href="/status">Network status</a></div><div><strong>Build</strong><a href="/protocol">Protocol</a><a href="/developers">Developers</a><a href="/docs">Documentation</a><a href="/security">Security</a></div><div><strong>Organization</strong><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div><div class="footer-bottom"><span>© 2026 ONEGODIAN, LLC. All rights reserved.</span><span>Founded and originated by Gregory L. Jones, also known as One Gregory Onegodian™.</span></div></footer>`;
+}
+
+function renderShell(title, body, description = "QR-V™ registry-backed verification infrastructure") {
+  return `<!doctype html><html lang="en" id="top"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} | QR-V™</title><meta name="description" content="${escapeHtml(description)}"><meta name="theme-color" content="#071d3d"><link rel="icon" type="image/png" href="/assets/qrv-favicon.png"><link rel="apple-touch-icon" href="/assets/qrv-favicon.png"><link rel="stylesheet" href="/assets/site.css"><script src="/assets/site.js" defer></script></head><body>${renderHeader()}<main>${body}</main>${renderFooter()}</body></html>`;
+}
+
+function renderDemoQr() {
+  const cells = "111110101111110001001100010101011101010100010111000011111010111110000010100001101101110110011001101101011001001101101011111010110111000011010010101011111010111110".padEnd(169, "0").slice(0, 169);
+  return `<div class="qr-mark" aria-label="QR-V demonstration code"><span class="qr-grid">${[...cells].map(cell => `<i${cell === "1" ? " class=filled" : ""}></i>`).join("")}</span><b>✓</b></div>`;
+}
+
+function renderHomePage() {
+  const useCases = [
+    ["Certificates", "Diplomas, training, professional credentials and awards.", "cert"],
+    ["Verified Contact Cards", "Dynamic vCards with registry status, privacy controls and analytics.", "vcard"],
+    ["Membership IDs", "Public-safe membership standing and organization-issued identity.", "id"],
+    ["Documents", "Agreements, notices, licenses and controlled official records.", "doc"],
+    ["Products", "Authenticity, origin, warranty and chain-of-custody verification.", "prod"],
+    ["Property & Assets", "Accountable references for physical and digital assets.", "asset"],
+  ];
+  return renderShell("Global Verification Network", `<section class="home-hero"><div class="network-pattern" aria-hidden="true"></div><div class="hero-copy"><p class="eyebrow">Global verification network</p><h1>Turn every<br>scan into proof.</h1><p class="hero-text">Registry-backed verification for certificates, credentials, documents, products, contact cards, and digital records.</p><div class="hero-actions"><a class="button button-cyan" href="/verify">Verify a Record</a><a class="button button-outline" href="/issuer">Become an Issuer</a></div><div class="micro-proof"><span>● Operational</span><span>QRVP-1</span><span>QVS-1.0</span></div><div class="crypto-chips"><span>SHA-256</span><span>Ed25519</span><span>Canonical JSON</span><span>TLS 1.3</span></div></div><article class="verify-card"><div class="card-kicker"><span class="live-dot"></span>Live verification demo</div><div class="verify-primary">${renderDemoQr()}<div><small>QRVID</small><strong>${escapeHtml(DEMO_QRVID)}</strong><span class="verified-badge">✓ Verified</span></div></div><dl><div><dt>Issuer</dt><dd>QR-V Demo Issuer</dd></div><div><dt>Integrity</dt><dd>Hash valid · Signature valid</dd></div><div><dt>Standard</dt><dd>QVS-1.0</dd></div></dl><a href="/verify/${encodeURIComponent(DEMO_QRVID)}">Open registry result <span>↗</span></a></article></section>
+  <section class="network-rail" aria-label="Live QR-V network infrastructure"><div><span class="live-dot"></span><strong>Live network</strong><small>Two-node production topology</small></div>${[["Browser platform", "qrv.network", "Operational"], ["Verification route", "/verify/{qrvid}", "Canonical"], ["Registry route", "/registry/{qrvid}", "Synced"], ["Verification API", "api.qrv.network", "Operational"], ["Integrity", "SHA-256 · Ed25519", "Valid"]].map(([label, endpoint, state], index) => `<article><span>0${index + 1}</span><strong>${label}</strong><small>${endpoint}</small><b>${state}</b></article>`).join("")}</section>
+  <section class="trust-strip"><div><span>✓</span><strong>Registry-backed</strong><small>Canonical source records</small></div><div><span>⌁</span><strong>Cryptographically signed</strong><small>SHA-256 + Ed25519</small></div><div><span>◎</span><strong>Globally verifiable</strong><small>One scan, clear status</small></div></section>
+  <section class="section problem-section"><div class="section-heading"><p class="eyebrow">What QR-V solves</p><h2>A QR code can point anywhere. QR-V establishes what is true.</h2><p>Each scan resolves to a canonical registry entry, validates issuer authority, and checks the record’s current status and cryptographic integrity.</p></div><div class="comparison"><article class="compare-card"><span>01</span><h3>Ordinary QR codes</h3><p>A visual pointer with no built-in assurance about the destination, issuer, status, or underlying data.</p><ul><li>Destination can change</li><li>No canonical record</li><li>No revocation state</li></ul></article><div class="versus">→</div><article class="compare-card qrv-card"><span>02</span><h3>QR-V verification</h3><p>A structured reference backed by issuer identity, registry state, cryptographic integrity, and an auditable lifecycle.</p><ul><li>Known issuing authority</li><li>Deterministic status</li><li>Hash and signature checks</li></ul></article></div></section>
+  <section class="section flow-section"><div class="section-heading split"><div><p class="eyebrow">How verification works</p><h2>One scan. Six trust checks.</h2></div><p>QRVP-1 connects the physical or digital QR mark to the resolver, API, registry, and integrity layer.</p></div><ol class="flow-grid">${[["01", "Scan", "Scan a QR-V mark or enter the QRVID."], ["02", "Resolve", "Route through the canonical qrv.network verifier."], ["03", "Locate", "Find the issuer-backed registry record."], ["04", "Validate", "Confirm its SHA-256 hash and Ed25519 signature."], ["05", "Evaluate", "Resolve issuer, privacy, expiration, and lifecycle state."], ["06", "Return", "Display a deterministic verification result."]].map(([n, heading, text]) => `<li><span>${n}</span><h3>${heading}</h3><p>${text}</p></li>`).join("")}</ol></section>
+  <section class="section demo-band"><div><p class="eyebrow">Live demonstration</p><h2>Verify the canonical public record.</h2><p>The public verifier discloses only permitted fields and fails closed when a record cannot be trusted.</p></div><form class="verify-search" action="/verify" method="get"><label for="home-qrvid">Enter a QR-V identifier</label><div><input id="home-qrvid" name="qrvid" value="${escapeHtml(DEMO_QRVID)}" required><button class="button" type="submit">Verify now</button></div><small>Try the production-format demonstration record.</small></form></section>
+  <section class="section use-section"><div class="section-heading"><p class="eyebrow">Products and services</p><h2>One verification network. Multiple accountable record classes.</h2></div><div class="use-grid">${useCases.map(([title, text, id]) => `<article id="${id}"><span>Verified record</span><h3>${title}</h3><p>${text}</p><a href="${id === "vcard" ? "/products/verified-contact-card" : "/use-cases#" + id}">Explore solution →</a></article>`).join("")}</div></section>
+  <section class="section issuer-section"><div class="portal-preview"><div><span>Issuer console</span><b>QR-V Demo Issuer</b><i>Active</i></div><section><article><small>Active records</small><strong>1,284</strong><span>+8.4%</span></article><article><small>Verifications</small><strong>8,421</strong><span>30 days</span></article><article><small>Revoked</small><strong>12</strong><span>0.9%</span></article></section><table><thead><tr><th>QRVID</th><th>Record</th><th>Status</th></tr></thead><tbody><tr><td>...000001</td><td>Safety Certificate</td><td>Verified</td></tr><tr><td>...000142</td><td>Contact Card</td><td>Verified</td></tr><tr><td>...000889</td><td>Compliance Award</td><td>Expired</td></tr></tbody></table></div><div class="issuer-copy"><p class="eyebrow">Issuer operations</p><h2>Issue, manage, and revoke from one accountable workflow.</h2><p>Approved organizations receive a controlled workspace for certificates, contact cards, QR codes, analytics, API keys, and audit history.</p><ul><li>Structured record issuance</li><li>Instant QRVID generation</li><li>Privacy and team controls</li><li>Lifecycle and revocation management</li></ul><a href="/issuer">Explore issuer access →</a></div></section>
+  <section class="section pricing-preview"><div class="section-heading split"><div><p class="eyebrow">Start issuing</p><h2>Plans built for pilots, teams, and institutions.</h2></div><a class="button button-outline" href="/pricing">View full pricing</a></div><div class="price-grid"><article><span>Pilot</span><strong>$0<small> / limited</small></strong><p>Validate one governed workflow with a controlled issuer pilot.</p></article><article class="featured"><em>Most selected</em><span>Starter</span><strong>$49<small> / month</small></strong><p>Issuer Portal access for up to 1,000 managed records.</p></article><article><span>Professional</span><strong>$299<small> / month</small></strong><p>Team controls, API access, and up to 25,000 records.</p></article></div></section>
+  <section class="section developer-band"><div><p class="eyebrow">Developer access</p><h2>Verification infrastructure with a clear contract.</h2><p>Integrate through deterministic REST responses, documented statuses, issuer APIs, and QRVP-1.</p><a class="button" href="/developers">Open developer portal</a></div><pre><code><b>GET</b> /api/v1/verify/${escapeHtml(DEMO_QRVID)}\n\n{\n  "status": <span>"VERIFIED"</span>,\n  "hashValid": true,\n  "signatureValid": true\n}</code></pre></section>
+  <section class="section origin-section"><div class="origin-mark">QR-V<sup>™</sup><span>Est. 2026</span></div><div><p class="eyebrow">Institutional trust</p><h2>Built to make verification accountable.</h2><p>QR-V™ is commercially owned by ONEGODIAN, LLC and was founded and originated by Gregory L. Jones, also known as One Gregory Onegodian™. The platform is structured around traceable issuer authority, canonical records, public-safe verification, and privacy-aware disclosure.</p><a href="/about">Read the platform record →</a></div></section>
+  <section class="final-cta"><p class="eyebrow">The infrastructure of trust</p><h2>Turn your next record into verifiable proof.</h2><div><a class="button" href="/issuer">Become an Issuer</a><a class="button button-outline" href="/verify">Verify a Record</a></div></section>`, "Registry-backed verification for certificates, credentials, documents, products, contact cards, and digital records.");
+}
+
+shell = renderShell;
+homePage = renderHomePage;
+
 app.get("/",(_q,res)=>res.type("html").send(homePage()));
 for(const [path,page] of Object.entries(pages))app.get(path,(_q,res)=>res.type("html").send(standardPage(page)));
 app.get("/products/verified-contact-card",(_q,res)=>res.type("html").send(contactCardProductPage()));
@@ -144,5 +216,5 @@ app.use((_q,res)=>res.status(404).type("html").send(shell("Not Found",`<section 
 app.use((_error,_req,res,_next)=>res.status(500).type("html").send(shell("Platform Error",`<section class="hero"><span class="status bad">ERROR</span><h1>The request could not be completed.</h1></section>`)));
 
 const server=process.env.NODE_ENV==="test"?null:app.listen(Number(process.env.PORT||3000),"0.0.0.0",()=>console.log(`QR-V platform ${VERSION} running`));
-export { app, contactCardFromForm, fetchJson, normalizeQrvid, normalizeVerificationState, qrColor, safeEqual, safeHttpsUrl, verificationResult };
+export { app, contactCardFromForm, fetchJson, normalizeQrvid, normalizeVerificationState, qrColor, renderHomePage, renderShell, safeEqual, safeHttpsUrl, verificationResult };
 export default server;

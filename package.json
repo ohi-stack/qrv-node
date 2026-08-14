@@ -1,7 +1,7 @@
 {
   "name": "qrv-node",
-  "version": "2.2.0",
-  "description": "Consolidated QR-V browser platform with verified records and dynamic contact cards",
+  "version": "2.3.0",
+  "description": "Consolidated QR-V browser platform with the production Global Verification Network design",
   "type": "module",
   "main": "server.js",
   "scripts": {

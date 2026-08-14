@@ -2,6 +2,10 @@
 
 `qrv-node` is the browser-facing production application for the QR-V™ Global Verification Network.
 
+The public UI now mirrors the established QR-V Sites design: official logo and favicon, sticky technical navigation, accessible desktop mega menus and mobile accordions, live-network and cryptographic-verification cues, product and service surfaces, institutional-trust messaging, and a back-to-top control. These presentation changes remain inside the existing two-node deployment boundary.
+
+See [`docs/SITE_DESIGN.md`](docs/SITE_DESIGN.md) for the production brand, navigation, topology, asset, and validation contract.
+
 ## Production Architecture
 
 QR-V is consolidated to two deployed application nodes:
@@ -81,7 +85,7 @@ qrv.network/issuer
 NODE_ENV=production
 PORT=3000
 SERVICE_NAME=qrv-platform
-SERVICE_VERSION=2.2.0
+SERVICE_VERSION=2.3.0
 QRV_PUBLIC_BASE_URL=https://qrv.network
 QRV_API_BASE_URL=https://api.qrv.network/api/v1
 DEMO_QRVID=QRV-PROD-CERT-000001

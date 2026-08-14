@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 process.env.NODE_ENV = 'test';
-const { contactCardFromForm, normalizeQrvid, normalizeVerificationState, qrColor, safeEqual, safeHttpsUrl } = await import('../server.js');
+const { contactCardFromForm, normalizeQrvid, normalizeVerificationState, qrColor, renderHomePage, renderShell, safeEqual, safeHttpsUrl } = await import('../server.js');
 
 test('verification state takes precedence over storage status', () => {
   assert.equal(normalizeVerificationState({ status: 'active', verificationState: 'VERIFIED' }), 'VERIFIED');
@@ -33,4 +33,29 @@ test('public-link and branded-color helpers fail closed', () => {
   assert.equal(safeHttpsUrl('https://qrv.network/'), 'https://qrv.network/');
   assert.equal(qrColor('00aaff', '#000000'), '#00aaff');
   assert.equal(qrColor('not-a-color', '#000000'), '#000000');
+});
+
+test('production shell contains the hosted QR-V brand, navigation and accessibility controls', () => {
+  const html = renderShell('Test', '<p>Body</p>');
+  assert.match(html, /qrv-global-verification-logo\.png/);
+  assert.match(html, /qrv-favicon\.png/);
+  assert.match(html, /class="site-header"/);
+  assert.match(html, /class="back-to-top"/);
+  assert.match(html, /Platform/);
+  assert.match(html, /Issuers/);
+  assert.match(html, /Solutions/);
+  assert.match(html, /Developers/);
+  assert.match(html, /Standards/);
+  assert.match(html, /Company/);
+});
+
+test('home page mirrors the production Sites surface and preserves the two-node topology', () => {
+  const html = renderHomePage();
+  assert.match(html, /Turn every<br>scan into proof/);
+  assert.match(html, /Institutional trust/);
+  assert.match(html, /Verified Contact Cards/);
+  assert.match(html, /qrv\.network/);
+  assert.match(html, /api\.qrv\.network/);
+  assert.doesNotMatch(html, /verify\.qrv\.network/);
+  assert.doesNotMatch(html, /registry\.qrv\.network/);
 });
