@@ -15,6 +15,8 @@ PostgreSQL remains the canonical registry datastore but is no longer exposed as 
 
 ## Canonical Platform Routes
 
+Verified Contact Cards add `/products/verified-contact-card`, public VCF and QR downloads, issuer create/edit workflows, and aggregate analytics without adding another production node. See [`docs/VERIFIED_CONTACT_CARD.md`](docs/VERIFIED_CONTACT_CARD.md).
+
 ```text
 /
 /verify
@@ -79,7 +81,7 @@ qrv.network/issuer
 NODE_ENV=production
 PORT=3000
 SERVICE_NAME=qrv-platform
-SERVICE_VERSION=2.1.0
+SERVICE_VERSION=2.2.0
 QRV_PUBLIC_BASE_URL=https://qrv.network
 QRV_API_BASE_URL=https://api.qrv.network/api/v1
 DEMO_QRVID=QRV-PROD-CERT-000001

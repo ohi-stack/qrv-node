@@ -12,6 +12,7 @@ const checks = [
   { name: "registry", url: `${rootBase}/registry`, expect: "html" },
   { name: "docs", url: `${rootBase}/docs`, expect: "html" },
   { name: "developers", url: `${rootBase}/developers`, expect: "html" },
+  { name: "verified-contact-card-product", url: `${rootBase}/products/verified-contact-card`, expect: "html" },
   { name: "status", url: `${rootBase}/status`, expect: "html" },
   { name: "api-root", url: `${apiBase}/`, expect: "json" },
   { name: "api-health", url: `${apiBase}/healthz`, expect: "json" },
