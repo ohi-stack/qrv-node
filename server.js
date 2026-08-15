@@ -1,346 +1,228 @@
-import express from 'express';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import crypto from 'crypto';
-import QRCode from 'qrcode';
+import crypto from "node:crypto";
+import express from "express";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+import QRCode from "qrcode";
 
 const app = express();
-app.disable('x-powered-by');
-app.set('trust proxy', 1);
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      connectSrc: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+      imgSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'"],
+    },
+  },
+}));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: false, limit: "64kb" }));
+app.use("/assets", express.static(new URL("./public", import.meta.url).pathname, {
+  fallthrough: false,
+  immutable: false,
+  maxAge: "1d",
+}));
+app.use(rateLimit({ windowMs: Number(process.env.PUBLIC_RATE_LIMIT_WINDOW_MS||60_000), limit: Number(process.env.PUBLIC_RATE_LIMIT_MAX||240), standardHeaders: "draft-7", legacyHeaders: false }));
+app.use((req,res,next)=>{const supplied=String(req.headers["x-request-id"]||"").trim();req.requestId=/^[A-Za-z0-9_.:-]{8,128}$/.test(supplied)?supplied:crypto.randomUUID();res.setHeader("X-Request-ID",req.requestId);next();});
+app.use("/issuer",(_req,res,next)=>{res.setHeader("Cache-Control","no-store");res.setHeader("Pragma","no-cache");next();});
 
-const NODE_ENV = process.env.NODE_ENV || 'development';
-const PORT = Number(process.env.PORT || 3000);
-const VERSION = process.env.APP_VERSION || '1.0.0';
-const SERVICE = 'qrv-platform';
-const APP_ORIGIN = (process.env.QRV_PLATFORM_ORIGIN || 'https://qrv.network').replace(/\/$/, '');
-const API_BASE_URL = (process.env.QRV_API_BASE_URL || 'https://api.qrv.network/api/v1').replace(/\/$/, '');
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1$/, '');
-const API_WRITE_KEY = process.env.QRV_PLATFORM_API_KEY || '';
-const SESSION_SECRET = process.env.SESSION_SECRET || '';
-const ISSUER_ACCESS_CODE = process.env.ISSUER_ACCESS_CODE || '';
-const SESSION_COOKIE = 'qrv_issuer_session';
-const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 12 * 60 * 60 * 1000);
+const SERVICE_NAME = process.env.SERVICE_NAME || "qrv-platform";
+const VERSION = process.env.SERVICE_VERSION || "2.3.0";
 const STARTED_AT = new Date().toISOString();
+const ROOT_URL = process.env.QRV_PUBLIC_BASE_URL || "https://qrv.network";
+const API_BASE_URL = (process.env.QRV_API_BASE_URL || "https://api.qrv.network/api/v1").replace(/\/$/, "");
+const API_ROOT_URL = API_BASE_URL.replace(/\/api\/v1$/, "");
+const DEMO_QRVID = process.env.DEMO_QRVID || "QRV-PROD-CERT-000001";
+const API_TIMEOUT_MS = Number(process.env.QRV_API_TIMEOUT_MS || 7000);
+const ISSUER_ID = String(process.env.QRV_ISSUER_ID || "").trim();
+const ISSUER_NAME = String(process.env.QRV_ISSUER_NAME || "").trim();
+const WRITE_API_KEY = String(process.env.QRV_WRITE_API_KEY || "");
+const PORTAL_USER = String(process.env.ISSUER_PORTAL_USERNAME || "");
+const PORTAL_PASSWORD_SCRYPT = String(process.env.ISSUER_PORTAL_PASSWORD_SCRYPT || "");
+const SESSION_SECRET = String(process.env.ISSUER_SESSION_SECRET || "");
+const SESSION_COOKIE = "qrv_issuer_session";
+const SESSION_TTL_SECONDS = Math.min(Math.max(Number(process.env.ISSUER_SESSION_TTL_SECONDS || 28800), 900), 86400);
+const QRVID_FORMAT = /^QRV-[A-Z0-9]+-[A-Z0-9]+-[0-9]{6,}$/;
+const loginRateLimiter=rateLimit({windowMs:Number(process.env.LOGIN_RATE_LIMIT_WINDOW_MS||15*60_000),limit:Number(process.env.LOGIN_RATE_LIMIT_MAX||8),standardHeaders:"draft-7",legacyHeaders:false,skipSuccessfulRequests:true});
+const legacyHostRoutes = {"verify.qrv.network":"/verify","issuer.qrv.network":"/issuer","registry.qrv.network":"/registry","explorer.qrv.network":"/registry","docs.qrv.network":"/docs","developers.qrv.network":"/developers","status.qrv.network":"/status"};
 
-const requestLimiter = rateLimit({ windowMs: 60_000, max: 240, standardHeaders: true, legacyHeaders: false });
-app.use(requestLimiter);
+app.use((req,res,next)=>{const host=String(req.hostname||"").toLowerCase();if(host==="www.qrv.network")return res.redirect(308,`${ROOT_URL}${req.originalUrl}`);const prefix=legacyHostRoutes[host];if(!prefix)return next();const suffix=req.originalUrl==="/"?"":req.originalUrl;return res.redirect(308,`${ROOT_URL}${prefix}${suffix}`);});
 
-const legacyHostRoutes = {
-  'verify.qrv.network': '/verify',
-  'issuer.qrv.network': '/issuer',
-  'registry.qrv.network': '/registry',
-  'explorer.qrv.network': '/explorer',
-  'docs.qrv.network': '/docs',
-  'developers.qrv.network': '/developers',
-  'status.qrv.network': '/status',
-  'store.qrv.network': '/store'
+const primaryNav = [["Verify","/verify"],["Contact Cards","/products/verified-contact-card"],["Issuer","/issuer"],["Registry","/registry"],["Developers","/developers"],["Docs","/docs"]];
+const pages = {
+  "/protocol":["QR-V Protocol","QRVP-1 defines how QR-V identifiers resolve into registry-backed verification results.",["Identifier format","Resolution model","Verification states","SHA-256 + Ed25519"]],
+  "/how-it-works":["How QR-V Works","Issue → registry → QR code → scan → API verification → deterministic result.",["Issue record","Generate QR","Resolve QRVID","Display result"]],
+  "/registry":["Registry","Browse public QR-V records without exposing restricted registry data.",["Record lookup","Issuer registry","Certificates","Auditability"]],
+  "/use-cases":["Use Cases","QR-V supports verified contact cards, certificates, memberships, products, documents, assets, property, and event credentials.",["Verified Contact Cards","Certificates","Memberships","Products"]],
+  "/products":["Products","Registry-backed QR products that remain verifiable after printing.",["Verified Contact Cards","Verified Certificates","Product Authentication","Document Verification"]],
+  "/developers":["Developers","Integrate with the versioned JSON API at api.qrv.network.",["REST API","Authentication","Webhooks","SDKs"]],
+  "/docs":["Documentation","Protocol, API, security, issuer, and registry documentation.",["QRVP-1","QVS-1.0","API Reference","Security"]],
+  "/pricing":["Pricing","QR-V certificate verification plans are activated through approved issuer onboarding.",["Pilot","Starter","Professional","Enterprise"]],
+  "/network":["Platform Architecture","qrv.network is the browser platform; api.qrv.network is the JSON and registry backend.",["Public platform","API node","Private PostgreSQL","QRVP-1"]],
+  "/security":["Security","QR-V applies fail-closed verification, issuer-scoped operations, signing, revocation, and audit logging.",["Authorization","Integrity","Audit","Revocation"]],
+  "/about":["About QR-V","QR-V is a registry-backed verification layer for QR codes.",["Mission","Protocol","Network","Platform"]],
+  "/contact":["Contact","Contact QR-V for issuer onboarding, integrations, or enterprise deployment.",["Onboarding","Sales","Support","Partnerships"]],
+  "/terms":["Terms of Use","Platform terms and verification conditions.",["Platform terms","Issuer terms","Acceptable use","Disclaimer"]],
+  "/privacy":["Privacy","Public, restricted, and private records expose only authorized fields.",["Public","Restricted","Private","Data handling"]],
 };
 
-app.use((req, res, next) => {
-  const host = String(req.hostname || '').toLowerCase();
-  if (host === 'www.qrv.network') return res.redirect(308, `${APP_ORIGIN}${req.originalUrl}`);
-  const prefix = legacyHostRoutes[host];
-  if (!prefix) return next();
-  const suffix = req.originalUrl === '/' ? '' : req.originalUrl;
-  return res.redirect(308, `${APP_ORIGIN}${prefix}${suffix}`);
-});
+function escapeHtml(value="") { return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;"); }
+function safeHttpsUrl(value="") { try { const parsed=new URL(String(value)); return parsed.protocol==="https:"?parsed.toString():""; } catch { return ""; } }
+function asList(value) { return Array.isArray(value)?value:value?[value]:[]; }
+function qrColor(value,fallback) { const normalized=String(value||"").replace(/^#/,""); return /^[0-9a-f]{6}$/i.test(normalized)?`#${normalized}`:fallback; }
+function safeEqual(left,right) { const a=Buffer.from(String(left||"")); const b=Buffer.from(String(right||"")); return a.length>0&&a.length===b.length&&crypto.timingSafeEqual(a,b); }
+function normalizeQrvid(value) { try { return decodeURIComponent(String(value||"").trim()).toUpperCase().replace(/\s+/g,""); } catch { return ""; } }
+function normalizeVerificationState(data={}) { return String(data.verificationState||data.status||(data.verified?"VERIFIED":"NOT_FOUND")).toUpperCase(); }
+function parseCookies(header="") { return Object.fromEntries(header.split(";").map(v=>v.trim()).filter(Boolean).map(v=>{const i=v.indexOf("=");return i<0?[v,""]:[v.slice(0,i),decodeURIComponent(v.slice(i+1))];})); }
+function portalConfigured() { const [salt,hash]=PORTAL_PASSWORD_SCRYPT.split(":"); return Boolean(PORTAL_USER&&salt&&/^[a-f0-9]{128}$/i.test(hash||"")&&SESSION_SECRET.length>=32&&WRITE_API_KEY&&ISSUER_ID&&ISSUER_NAME); }
+function signSession(payload) { const body=Buffer.from(JSON.stringify(payload)).toString("base64url"); const signature=crypto.createHmac("sha256",SESSION_SECRET).update(body).digest("base64url"); return `${body}.${signature}`; }
+function readSession(req) { if(!SESSION_SECRET)return null; const token=parseCookies(req.headers.cookie)[SESSION_COOKIE]; if(!token)return null; const [body,signature]=token.split("."); if(!body||!safeEqual(signature,crypto.createHmac("sha256",SESSION_SECRET).update(body).digest("base64url")))return null; try{const value=JSON.parse(Buffer.from(body,"base64url").toString("utf8")); return value.exp>Date.now()&&value.issuerId===ISSUER_ID?value:null;}catch{return null;} }
+function verifyPassword(password) { const [salt,expected]=PORTAL_PASSWORD_SCRYPT.split(":"); if(!salt||!expected)return false; const actual=crypto.scryptSync(String(password||""),salt,64).toString("hex"); return safeEqual(actual,expected); }
+function sessionCookie(token,maxAge=SESSION_TTL_SECONDS) { const secure=process.env.NODE_ENV==="production"?"; Secure":""; return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`; }
+function requireIssuer(req,res,next) { const session=readSession(req); if(!session)return res.redirect(303,`/issuer/login?next=${encodeURIComponent(req.originalUrl)}`); req.issuerSession=session; next(); }
+function verifyCsrf(req,res,next) { if(!safeEqual(req.body?.csrf,req.issuerSession?.csrf))return res.status(403).type("html").send(shell("Request Rejected",`<section class="hero"><span class="status bad">FORBIDDEN</span><h1>Security token rejected.</h1><p>Reload the form and try again.</p></section>`)); next(); }
 
-function escapeHtml(value = '') {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+async function fetchApi(path,options={}) { const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),API_TIMEOUT_MS); const url=/^https:\/\//.test(path)?path:`${API_BASE_URL}${path}`; try { return await fetch(url,{...options,signal:controller.signal,headers:{"user-agent":`QRV-Platform/${VERSION}`,...(options.auth?{"x-api-key":WRITE_API_KEY,"x-issuer-id":ISSUER_ID}:{}) ,...(options.headers||{})}}); } finally { clearTimeout(timer); } }
+async function fetchJson(path,options={}) { const response=await fetchApi(path,{...options,headers:{accept:"application/json",...(options.headers||{})}}); const data=await response.json().catch(()=>({})); return {response,data}; }
 
-function parseCookies(req) {
-  const cookies = {};
-  const raw = String(req.headers.cookie || '');
-  for (const part of raw.split(';')) {
-    const [key, ...rest] = part.trim().split('=');
-    if (!key) continue;
-    cookies[key] = decodeURIComponent(rest.join('='));
-  }
-  return cookies;
-}
+function shell(title,body,description="QR-V™ registry-backed verification infrastructure") { return `<!doctype html><html lang="en" id="top"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} | QR-V™</title><meta name="description" content="${escapeHtml(description)}"><style>:root{--bg:#020617;--line:rgba(125,196,255,.22);--text:#eef6ff;--muted:#b8cee8}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 50% -10%,#0b2f66 0,#020617 38%);color:var(--text);font-family:system-ui,sans-serif}.wrap{width:min(1120px,100%);margin:auto;padding:18px}.top{position:sticky;top:12px;z-index:20;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px;border:1px solid var(--line);border-radius:18px;background:rgba(2,6,23,.9);backdrop-filter:blur(16px);box-shadow:0 18px 50px rgba(0,0,0,.25)}.nav{display:flex;gap:8px;flex-wrap:wrap}a{color:#7dd3fc}.nav a{padding:8px;text-decoration:none;color:var(--muted)}.hero{padding:58px 0 24px}.hero h1{font-size:clamp(38px,6vw,68px);margin:16px 0}.hero p,.card p{color:var(--muted);line-height:1.65}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.card{padding:22px;border:1px solid var(--line);border-radius:18px;background:#071a2f}.form{display:grid;gap:14px;max-width:760px}.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.input,select,textarea{width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);font:inherit}.btn{display:inline-block;border:0;border-radius:12px;padding:12px 16px;background:#2563eb;color:white;font-weight:800;text-decoration:none;cursor:pointer}.btn.alt{background:#17304e}.actions{display:flex;gap:10px;flex-wrap:wrap}.status{display:inline-block;padding:8px 12px;border-radius:999px;font-weight:900}.ok{background:#14532d}.bad{background:#7f1d1d}.warn{background:#78350f}.row{display:grid;grid-template-columns:180px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px;border-bottom:1px solid var(--line)}.footer{margin-top:48px;padding:28px 0;border-top:1px solid var(--line);color:var(--muted);display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}@media(max-width:650px){.top{top:0;border-radius:0}.row{grid-template-columns:1fr}table{display:block;overflow:auto}}</style></head><body><div class="wrap"><header class="top"><a href="/"><strong>QR-V™ Network</strong></a><nav class="nav">${primaryNav.map(([l,h])=>`<a href="${h}">${l}</a>`).join("")}<a href="/status">Status</a></nav></header>${body}<footer class="footer"><span>QR-V™ • qrv.network • API operations remain private behind api.qrv.network</span><a href="#top">Back to top ↑</a></footer></div></body></html>`; }
+function cards(items){return `<section class="grid">${items.map(x=>`<article class="card"><h3>${escapeHtml(x)}</h3><p>Part of the consolidated QR-V platform.</p></article>`).join("")}</section>`;}
+function standardPage([title,description,items]){return shell(title,`<section class="hero"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p></section>${cards(items)}`,description);}
+function homePage(){return shell("Global Verification Network",`<section class="hero"><span class="status ok">QRVP-1 • QVS-1.0</span><h1>Verify records. Confirm authenticity.</h1><p>All browser-facing verification, issuer, registry, documentation, and status routes are consolidated at qrv.network. api.qrv.network is the JSON and registry backend.</p><p><a class="btn" href="/verify">Verify a Record</a> <a class="btn alt" href="/issuer">Issuer Portal</a></p></section>${cards(["Verified Certificates","Membership Verification","Product Authentication","Document Verification"])}`);}
+function contactCardProductPage(){return shell("Verified Contact Card",`<section class="hero"><span class="status ok">SIGNED • DYNAMIC • REGISTRY-BACKED</span><h1>One scan. A verified connection.</h1><p>QR-V™ Verified Contact Cards turn a printed QR into a live, cryptographically verifiable profile. Recipients can confirm the issuer, review disclosed details, and save a standards-compatible contact file in one tap.</p><div class="actions"><a class="btn" href="/issuer/vcards/new">Create a verified contact card</a><a class="btn alt" href="/verify">Verify a QR-V record</a></div></section>${cards(["Editable without reprinting","One-tap VCF download","Public, restricted, or private fields","Aggregate scan analytics","Branded PNG and SVG downloads","Bulk API issuance"])}<section class="card"><h2>Verification—not just redirection</h2><p>Each card keeps a stable QRVID while contact updates are re-hashed, Ed25519-signed, written to PostgreSQL, and added to the audit trail. Revoked or expired cards stop presenting an active contact download.</p></section>`,"Create dynamic, registry-backed and cryptographically verified QR contact cards with QR-V™.");}
+function verifyForm(){return shell("Verify a Record",`<section class="hero"><h1>Verify a QR-V record.</h1><form class="form" action="/verify" method="get"><input class="input" name="qrvid" placeholder="QRV-PROD-CERT-000001" required><button class="btn">Verify</button></form><p><a href="/verify/${encodeURIComponent(DEMO_QRVID)}">Open live demo</a></p></section>`);}
+function loginPage(message=""){return shell("Issuer Login",`<section class="hero"><h1>Issuer Login</h1><p>Authorized issuer access only.</p>${message?`<p class="status bad">${escapeHtml(message)}</p>`:""}${portalConfigured()?`<form class="form" method="post" action="/issuer/login"><label>Username<input class="input" name="username" autocomplete="username" required></label><label>Password<input class="input" type="password" name="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form>`:`<p class="status bad">Issuer authentication is not configured. Access remains closed.</p>`}</section>`);}
+function issuerNav(){return `<p><a href="/issuer/dashboard">Dashboard</a> · <a href="/issuer/records">Records</a> · <a href="/issuer/records/new">Issue certificate</a> · <a href="/issuer/vcards/new">Create contact card</a> · <a href="/issuer/revocations">Revocations</a></p>`;}
 
-function sign(value) {
-  if (!SESSION_SECRET) return '';
-  return crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('base64url');
-}
+function contactCardFromForm(body={}) { return {
+  formattedName:String(body.formattedName||"").trim(), givenName:String(body.givenName||"").trim(), familyName:String(body.familyName||"").trim(),
+  organization:String(body.organization||"").trim(), title:String(body.contactTitle||"").trim(),
+  phones:String(body.phone||"").trim()?[{type:body.phoneType||"work",value:String(body.phone).trim()}]:[],
+  emails:String(body.email||"").trim()?[{type:body.emailType||"work",value:String(body.email).trim()}]:[],
+  website:String(body.website||"").trim()||null,
+  socialLinks:String(body.linkedin||"").trim()?[{label:"linkedin",url:String(body.linkedin).trim()}]:[],
+  address:{type:"work",street:String(body.street||"").trim(),locality:String(body.locality||"").trim(),region:String(body.region||"").trim(),postalCode:String(body.postalCode||"").trim(),country:String(body.country||"").trim()},
+  note:String(body.note||"").trim()||null, photoUrl:String(body.photoUrl||"").trim()||null,
+  publicFields:asList(body.publicFields),
+}; }
 
-function createSessionToken() {
-  const payload = Buffer.from(JSON.stringify({ role: 'issuer', exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
-  return `${payload}.${sign(payload)}`;
-}
+function contactCardForm(csrf,contact={},visibility="public",action="/issuer/vcards/new",submit="Create verified contact card") { const publicFields=new Set(contact.publicFields||["formattedName","givenName","familyName","organization","title","phones","emails","address","website","socialLinks","note","photoUrl"]); const checked=(field)=>publicFields.has(field)?" checked":""; return `<form class="form" method="post" action="${escapeHtml(action)}"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><div class="form-grid"><label>Display name<input class="input" name="formattedName" value="${escapeHtml(contact.formattedName||"")}" required></label><label>Given name<input class="input" name="givenName" value="${escapeHtml(contact.givenName||"")}"></label><label>Family name<input class="input" name="familyName" value="${escapeHtml(contact.familyName||"")}"></label><label>Organization<input class="input" name="organization" value="${escapeHtml(contact.organization||"")}"></label><label>Job title<input class="input" name="contactTitle" value="${escapeHtml(contact.title||"")}"></label><label>Phone<input class="input" name="phone" value="${escapeHtml(contact.phones?.[0]?.value||"")}"></label><label>Email<input class="input" type="email" name="email" value="${escapeHtml(contact.emails?.[0]?.value||"")}"></label><label>Website (HTTPS)<input class="input" type="url" name="website" value="${escapeHtml(contact.website||"")}"></label><label>LinkedIn (HTTPS)<input class="input" type="url" name="linkedin" value="${escapeHtml(contact.socialLinks?.find(link=>link.label==="linkedin")?.url||"")}"></label><label>Photo URL (HTTPS)<input class="input" type="url" name="photoUrl" value="${escapeHtml(contact.photoUrl||"")}"></label></div><label>Note<textarea name="note">${escapeHtml(contact.note||"")}</textarea></label><label>Visibility<select name="visibility"><option value="public"${visibility==="public"?" selected":""}>Public</option><option value="restricted"${visibility==="restricted"?" selected":""}>Restricted — disclose selected fields</option><option value="private"${visibility==="private"?" selected":""}>Private</option></select></label><fieldset><legend>Fields available to scanners</legend>${["formattedName","organization","title","phones","emails","website","socialLinks","note","photoUrl"].map(field=>`<label><input type="checkbox" name="publicFields" value="${field}"${checked(field)}> ${escapeHtml(field)}</label>`).join(" ")}</fieldset><button class="btn">${escapeHtml(submit)}</button></form>`; }
 
-function validSession(req) {
-  if (!SESSION_SECRET) return false;
-  const token = parseCookies(req)[SESSION_COOKIE];
-  if (!token || !token.includes('.')) return false;
-  const [payload, signature] = token.split('.');
-  const expected = sign(payload);
-  const a = Buffer.from(signature || '');
-  const b = Buffer.from(expected || '');
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
-  try {
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return data.role === 'issuer' && Number(data.exp) > Date.now();
-  } catch {
-    return false;
-  }
-}
+function contactCardPanel(data={}) { const contact=data.contact; if(!contact)return ""; const rows=[]; const add=(label,value)=>{if(value)rows.push(`<div class="row"><b>${escapeHtml(label)}</b><span>${escapeHtml(value)}</span></div>`);}; add("Name",contact.formattedName);add("Organization",contact.organization);add("Title",contact.title);for(const item of contact.phones||[])add(`Phone (${item.type})`,item.value);for(const item of contact.emails||[])add(`Email (${item.type})`,item.value);add("Website",contact.website);const social=(contact.socialLinks||[]).map(item=>{const href=safeHttpsUrl(item.url);return href?`<a href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(item.label)}</a>`:"";}).filter(Boolean).join(" · ");if(social)rows.push(`<div class="row"><b>Profiles</b><span>${social}</span></div>`);add("Note",contact.note);const actions=data.verificationState==="VERIFIED"?`<div class="actions"><a class="btn" href="/vcard/${encodeURIComponent(data.qrvid)}.vcf">Save verified contact</a><a class="btn alt" href="/qr/${encodeURIComponent(data.qrvid)}.png">Download QR (PNG)</a><a class="btn alt" href="/qr/${encodeURIComponent(data.qrvid)}.svg">Download QR (SVG)</a></div>`:"";return `<section class="card"><h2>Verified Contact Card</h2>${rows.join("")}${actions}</section>`; }
 
-function requireIssuer(req, res, next) {
-  if (validSession(req)) return next();
-  return res.redirect(303, '/issuer');
-}
+async function verificationResult(qrvid){const normalized=normalizeQrvid(qrvid); if(!QRVID_FORMAT.test(normalized))return {httpStatus:422,html:shell("Invalid QRVID",`<section class="hero"><span class="status bad">INVALID</span><h1>Invalid QRVID format.</h1></section>`)}; try{const {response,data}=await fetchJson(`/verify/${encodeURIComponent(normalized)}`); const state=normalizeVerificationState(data); data.verificationState=state; const css=state==="VERIFIED"?"ok":state==="EXPIRED"?"warn":"bad"; return {httpStatus:response.status,html:shell("Verification Result",`<section class="hero"><span class="status ${css}">${escapeHtml(state)}</span><h1>${state==="VERIFIED"?"Record verified.":"Verification result."}</h1><p>${state==="VERIFIED"?"The registry payload and Ed25519 signature passed integrity checks.":"No active verification claim is being presented."}</p></section><section class="card"><div class="row"><b>QRVID</b><span>${escapeHtml(data.qrvid||normalized)}</span></div><div class="row"><b>Issuer</b><span>${escapeHtml(data.issuer||"Not disclosed")}</span></div><div class="row"><b>Record type</b><span>${escapeHtml(data.recordType||"Not disclosed")}</span></div><div class="row"><b>Subject</b><span>${escapeHtml(data.subject||"Restricted")}</span></div></section>${contactCardPanel(data)}`)};}catch{return {httpStatus:503,html:shell("Verification Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Verification is temporarily unavailable.</h1><p>No verification claim has been made.</p></section>`)}}}
 
-function safeEqual(left, right) {
-  const a = Buffer.from(String(left || ''));
-  const b = Buffer.from(String(right || ''));
-  return a.length === b.length && a.length > 0 && crypto.timingSafeEqual(a, b);
-}
-
-async function api(path, options = {}) {
-  const headers = { accept: 'application/json', ...(options.headers || {}) };
-  if (options.write) {
-    if (!API_WRITE_KEY) throw new Error('QRV_PLATFORM_API_KEY is not configured');
-    headers['x-api-key'] = API_WRITE_KEY;
-  }
-  if (options.body && !headers['content-type']) headers['content-type'] = 'application/json';
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-    body: options.body && typeof options.body !== 'string' ? JSON.stringify(options.body) : options.body
-  });
-  const payload = await response.json().catch(() => ({}));
-  return { response, payload };
-}
-
-async function apiRoot(path, options = {}) {
-  const headers = { accept: 'application/json', ...(options.headers || {}) };
-  const response = await fetch(`${API_ORIGIN}${path}`, { ...options, headers });
-  const payload = await response.json().catch(() => ({}));
-  return { response, payload };
-}
-
-const primaryNav = [
-  ['Protocol', '/protocol'],
-  ['How It Works', '/how-it-works'],
-  ['Verify', '/verify'],
-  ['Registry', '/registry'],
-  ['Use Cases', '/use-cases'],
-  ['Developers', '/developers'],
-  ['Pricing', '/pricing'],
-  ['About', '/about']
+const megaMenus = [
+  ["Platform", "Public trust layer", [["Verify a Record", "/verify"], ["Public Registry", "/registry"], ["How It Works", "/how-it-works"], ["Network Status", "/status"]]],
+  ["Issuers", "Commercial application", [["Issuer Portal", "/issuer"], ["Plans & Pricing", "/pricing"], ["Verification Products", "/products"], ["Request Issuer Access", "/contact"]]],
+  ["Solutions", "Authorized record classes", [["Certificates & Credentials", "/use-cases#cert"], ["Verified Contact Cards", "/products/verified-contact-card"], ["Documents & Records", "/use-cases#doc"], ["Products, Property & Assets", "/use-cases#prod"]]],
+  ["Developers", "Integration resources", [["Developer Portal", "/developers"], ["Documentation", "/docs"], ["API Architecture", "/network"], ["Security Model", "/security"]]],
+  ["Standards", "Protocol and governance", [["QRVP-1 Protocol", "/protocol"], ["QVS-1.0 Standard", "/docs#record-states"], ["Trust & Security", "/security"], ["Network Architecture", "/network"]]],
+  ["Company", "Organization and origin", [["About QR-V", "/about"], ["Contact", "/contact"], ["Pricing", "/pricing"], ["Terms & Privacy", "/terms"]]],
 ];
 
-function styles() {
-  return `:root{--bg:#030712;--panel:#081426;--panel2:#0d1f37;--line:rgba(96,165,250,.2);--text:#f5f9ff;--muted:#b7c7e2;--blue:#38bdf8;--gold:#f2d06b;--green:#22c55e;--red:#ef4444;--amber:#f59e0b}*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(circle at 15% 0,#173d77 0,transparent 35%),linear-gradient(180deg,#06101e,#020617 65%);color:var(--text);min-height:100vh}a{color:inherit}.wrap{max-width:1180px;margin:auto;padding:22px}.topbar{position:sticky;top:10px;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:18px;padding:14px 16px;border:1px solid var(--line);border-radius:20px;background:rgba(3,7,18,.82);backdrop-filter:blur(14px)}.brand{text-decoration:none;font-weight:950;letter-spacing:.05em}.nav{display:flex;gap:4px;flex-wrap:wrap}.nav a{padding:9px 10px;text-decoration:none;color:var(--muted);font-size:14px;font-weight:800;border-radius:10px}.nav a:hover{background:rgba(56,189,248,.08);color:#fff}.hero{padding:74px 0 34px}.eyebrow{display:inline-block;color:var(--gold);font-size:12px;font-weight:950;letter-spacing:.14em;text-transform:uppercase}.hero h1,.section h1{font-size:clamp(40px,7vw,78px);line-height:1.02;letter-spacing:-.05em;margin:14px 0}.section h1{font-size:clamp(34px,5vw,58px)}h2{margin:0 0 10px}.lead,p,li{color:var(--muted);font-size:18px;line-height:1.65}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}.btn,button{display:inline-flex;justify-content:center;align-items:center;padding:13px 18px;border-radius:999px;border:0;background:var(--gold);color:#07111f;font-weight:900;text-decoration:none;cursor:pointer}.btn.alt{background:transparent;color:#fff;border:1px solid var(--line)}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:24px 0}.card{border:1px solid var(--line);background:linear-gradient(180deg,rgba(8,20,38,.94),rgba(3,9,22,.95));border-radius:22px;padding:22px;box-shadow:0 18px 44px rgba(0,0,0,.24)}.status{display:inline-block;padding:7px 10px;border-radius:999px;font-weight:900;font-size:13px}.VERIFIED{color:#dcffe8;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.3)}.REVOKED{color:#ffe2e2;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.3)}.EXPIRED{color:#fff0cf;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.3)}.NOT_FOUND,.UNAVAILABLE{color:#ffe2e2;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.24)}form.stack{display:grid;gap:13px}label{font-weight:800;color:#dce9ff}input,select,textarea{width:100%;padding:13px 14px;border-radius:13px;border:1px solid #36507d;background:#071426;color:#fff;font-size:16px}textarea{min-height:110px}.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:12px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}.table th{color:#dce9ff}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}.notice{padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(56,189,248,.07);color:var(--muted)}.footer{margin-top:54px;padding:28px 0;border-top:1px solid var(--line);color:#91a9cc;font-size:14px}.footgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}.footgrid a{display:block;color:#bfd0eb;text-decoration:none;margin:6px 0}.small{font-size:14px}.danger{background:#dc2626;color:#fff}.ok{color:#bbf7d0}.bad{color:#fecaca}@media(max-width:850px){.topbar{align-items:flex-start;flex-direction:column}.grid,.footgrid{grid-template-columns:1fr}.table{font-size:14px;display:block;overflow-x:auto}}`;
+function renderHeader() {
+  const groups = megaMenus.map(([label, eyebrow, links]) => `<details class="nav-group"><summary>${escapeHtml(label)}<span aria-hidden="true">⌄</span></summary><div class="mega-menu"><div class="mega-intro"><small>${escapeHtml(eyebrow)}</small><strong>${escapeHtml(label)}</strong><p>Explore QR-V infrastructure, workflows, standards, and production services.</p></div><div class="mega-links">${links.map(([name, href], index) => `<a href="${href}"><span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(name)}</strong><i aria-hidden="true">↗</i></a>`).join("")}</div><a class="mega-feature" href="/verify/${encodeURIComponent(DEMO_QRVID)}"><small>Live demonstration</small><strong>Test the canonical QR-V record.</strong><span>${escapeHtml(DEMO_QRVID)}</span><b>Run verification →</b></a></div></details>`).join("");
+  return `<header class="site-header"><a class="brand-logo" href="/" aria-label="QR-V Global Verification Network home"><img src="/assets/qrv-global-verification-logo.png" width="1077" height="375" alt="QR-V Global Verification Network"></a><button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-navigation"><span></span><span></span><span></span><b class="sr-only">Menu</b></button><nav id="primary-navigation" aria-label="Primary navigation">${groups}</nav><a class="button header-cta" href="/verify">Verify a Record</a></header>`;
 }
 
-function shell(title, description, body) {
-  const nav = primaryNav.map(([label, href]) => `<a href="${href}">${label}</a>`).join('');
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><style>${styles()}</style></head><body><div class="wrap"><header class="topbar"><a class="brand" href="/">QR-V™ NETWORK</a><nav class="nav">${nav}<a href="/issuer">Issuer</a><a href="/status">Status</a></nav></header>${body}<footer class="footer"><div class="footgrid"><div><strong>QR-V</strong><a href="/verify">Verify</a><a href="/registry">Registry</a><a href="/issuer">Issuer Portal</a></div><div><strong>Technology</strong><a href="/protocol">QRVP-1</a><a href="/standards">QVS-1.0</a><a href="/security">Security</a></div><div><strong>Resources</strong><a href="/docs">Docs</a><a href="/developers">Developers</a><a href="/api-reference">API Reference</a></div><div><strong>Commercial</strong><a href="/pricing">Pricing</a><a href="/store">Store</a><a href="/enterprise">Enterprise</a></div></div><p class="small">QR-V™ Global Verification Network • QRVP-1 • QVS-1.0 • Platform ${VERSION}</p></footer></div></body></html>`;
+function renderFooter() {
+  return `<button class="back-to-top" type="button" aria-label="Back to top" title="Back to top">↑</button><footer class="site-footer"><div class="footer-lead"><a class="footer-logo" href="/"><img src="/assets/qrv-global-verification-logo.png" width="1077" height="375" alt="QR-V Global Verification Network"></a><p>Registry-backed verification infrastructure for records that need to be trusted.</p><span>QRVP-1 Protocol · QVS-1.0 Standard</span></div><div><strong>Platform</strong><a href="/verify">Verify</a><a href="/registry">Registry</a><a href="/issuer">Issuer access</a><a href="/status">Network status</a></div><div><strong>Build</strong><a href="/protocol">Protocol</a><a href="/developers">Developers</a><a href="/docs">Documentation</a><a href="/security">Security</a></div><div><strong>Organization</strong><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div><div class="footer-bottom"><span>© 2026 ONEGODIAN, LLC. All rights reserved.</span><span>Founded and originated by Gregory L. Jones, also known as One Gregory Onegodian™.</span></div></footer>`;
 }
 
-function page({ eyebrow, title, lead, cards = [], actions = [] }) {
-  return shell(title, lead, `<main><section class="hero"><div class="eyebrow">${escapeHtml(eyebrow)}</div><h1>${escapeHtml(title)}</h1><p class="lead">${escapeHtml(lead)}</p><div class="actions">${actions.map(([label, href, alt]) => `<a class="btn${alt ? ' alt' : ''}" href="${href}">${escapeHtml(label)}</a>`).join('')}</div></section><section class="grid">${cards.map(([heading, text, href]) => `<article class="card"><h2>${escapeHtml(heading)}</h2><p>${escapeHtml(text)}</p>${href ? `<a href="${href}">Open →</a>` : ''}</article>`).join('')}</section></main>`);
+function renderShell(title, body, description = "QR-V™ registry-backed verification infrastructure") {
+  return `<!doctype html><html lang="en" id="top"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} | QR-V™</title><meta name="description" content="${escapeHtml(description)}"><meta name="theme-color" content="#071d3d"><link rel="icon" type="image/png" href="/assets/qrv-favicon.png"><link rel="apple-touch-icon" href="/assets/qrv-favicon.png"><link rel="stylesheet" href="/assets/site.css"><script src="/assets/site.js" defer></script></head><body>${renderHeader()}<main>${body}</main>${renderFooter()}</body></html>`;
 }
 
-const contentPages = {
-  '/protocol': ['QR-V Protocol', 'QRVP-1 verification infrastructure', 'QRVP-1 defines identifier encoding, resolution, registry lookup, validation, revocation, privacy modes, and verification responses.', [['Identifier Layer','QR-V identifiers are stable pointers to canonical records.'],['Resolution','HTTPS gateways resolve identifiers through the network.'],['Validation','Registry state, SHA-256 integrity references, issuer authorization, and revocation controls drive verification.']]],
-  '/how-it-works': ['How It Works', 'Issue → scan → verify', 'An issuer creates a record, the platform generates a QRVID and verification URL, the API stores the canonical record, and a scan returns a deterministic verification state.', [['Issue','Create a registry-backed record.'],['Scan','QR codes use qrv.network/verify/{QRVID}.'],['Verify','The API returns VERIFIED, REVOKED, EXPIRED, or NOT_FOUND.']]],
-  '/use-cases': ['Use Cases', 'Verification for high-trust records', 'QR-V supports certificates, memberships, products, documents, assets, property records, tickets, and other workflows where authenticity matters.', [['Certificates','Training credentials, diplomas, awards, licenses.','/certificate-verification'],['Membership','Association and membership credentials.'],['Products','Brand protection and authenticity records.']]],
-  '/about': ['About QR-V', 'The verification layer for QR codes', 'QR-V transforms ordinary QR links into registry-backed verification references that expose issuer identity, status, integrity references, and lifecycle state.', [['Protocol','QRVP-1 defines the verification protocol.'],['Standard','QVS-1.0 defines operational verification rules.'],['Network','qrv.network is the canonical public platform namespace.']]],
-  '/standards': ['Standards', 'QVS-1.0', 'QVS-1.0 defines the deterministic registry-backed verification model for QR-V records.', [['Authenticity','Confirm the canonical record exists.'],['Issuer','Confirm which issuer created the record.'],['Lifecycle','Expose verified, revoked, expired, and not-found states.']]],
-  '/security': ['Security', 'Secure verification by default', 'The consolidated platform uses a public application node and a separate API/data node. Database credentials remain on the API node; issuer writes fail closed without configured authorization.', [['Transport','HTTPS is required in production.'],['Authorization','Issuer writes require platform authorization.'],['Audit','Create, verify, and revoke events are written to the registry audit log.']]],
-  '/developers': ['Developers', 'Build on the QR-V API', 'Integrate verification and issuer workflows through api.qrv.network while sending human users to qrv.network routes.', [['Verify API','GET /api/v1/verify/:qrvid','/api-reference'],['Create Record','POST /api/v1/records','/api-reference'],['Revoke Record','POST /api/v1/records/:qrvid/revoke','/api-reference']]],
-  '/pricing': ['Pricing', 'Verification infrastructure for issuers', 'Start with paid implementation and recurring issuer plans. Pricing should reflect fraud reduction, public verification, lifecycle controls, and auditability rather than QR image generation.', [['Founding Pilot','$1,500 implementation pilot for early issuers.'],['Professional','$5,000 setup + recurring issuer service.'],['Enterprise','White-label, API, bulk import, policy controls, and implementation support.']]],
-  '/store': ['Store', 'QR-V products and services', 'The consolidated store lives on qrv.network. Launch packages can be connected to the final payment processor without introducing another public application node.', [['Founding Issuer Pilot','Early-access implementation and onboarding.'],['Certificate Launch','Certificate verification implementation package.'],['Enterprise','White-label and integration engagement.']]],
-  '/enterprise': ['Enterprise', 'Deploy QR-V into institutional workflows', 'Enterprise packages combine issuer onboarding, record import, verification UX, API integration, audit reporting, and optional white-label deployment.', [['Education','Credential verification.'],['Associations','Membership verification.'],['Products','Product authenticity and brand protection.']]],
-  '/certificate-verification': ['Certificates', 'Issue verifiable certificates', 'Verified Certificates are the first commercial QR-V product because they exercise the complete lifecycle from issuance to public verification and revocation.', [['Issue','Create certificate records from the Issuer Portal.','/issuer'],['Verify','Anyone can verify a QRVID.','/verify'],['Revoke','Issuer controls invalidate credentials when necessary.','/issuer']]],
-  '/docs': ['Documentation', 'QR-V reference documentation', 'Protocol, standard, architecture, verification, registry, issuer, developer, security, and API documentation now live under one public namespace.', [['Overview','Core QR-V concepts.','/docs/overview'],['Protocol','QRVP-1 implementation model.','/docs/protocol'],['API','Machine-facing API contract.','/api-reference']]],
-  '/docs/overview': ['Docs • Overview', 'System overview', 'QR-V uses a public platform node at qrv.network and a canonical API/data node at api.qrv.network.'],
-  '/docs/protocol': ['Docs • Protocol', 'QRVP-1', 'QRVP-1 supports HTTPS gateway identifiers, so canonical verification URLs can resolve through qrv.network/verify/{QRVID}.'],
-  '/docs/verification': ['Docs • Verification', 'Deterministic verification', 'Public verification states are VERIFIED, REVOKED, EXPIRED, and NOT_FOUND.'],
-  '/docs/registry': ['Docs • Registry', 'Canonical data layer', 'The registry datastore is private infrastructure behind api.qrv.network and is not a separate public application.'],
-  '/docs/issuers': ['Docs • Issuers', 'Issuer operations', 'Issuers create records, generate QR links, manage records, revoke credentials, and inspect activity through qrv.network/issuer.'],
-  '/docs/developers': ['Docs • Developers', 'Integration model', 'External systems call api.qrv.network; human-facing workflows use qrv.network.'],
-  '/docs/api-reference': ['Docs • API', 'API reference', 'The canonical API base is https://api.qrv.network/api/v1.']
-};
-
-app.get('/', (_req, res) => res.send(page({ eyebrow: 'QR-V™ Global Verification Network', title: 'Verify records before relying on them.', lead: 'QR-V™ turns QR codes into registry-backed verification references. The production network is consolidated into one public platform at qrv.network and one backend API at api.qrv.network.', actions: [['Verify a Record','/verify'],['Become an Issuer','/issuer',true]], cards: [['Verified Certificates','Issue credentials with public scan validation.','/certificate-verification'],['Issuer Portal','Create, inspect, and revoke QR-V records.','/issuer'],['Developer API','Integrate QR-V into external systems.','/developers']] })));
-
-for (const [path, data] of Object.entries(contentPages)) {
-  app.get(path, (_req, res) => {
-    const [eyebrow, title, lead, cards = []] = data;
-    res.send(page({ eyebrow, title, lead, cards }));
-  });
+function renderDemoQr() {
+  const cells = "111110101111110001001100010101011101010100010111000011111010111110000010100001101101110110011001101101011001001101101011111010110111000011010010101011111010111110".padEnd(169, "0").slice(0, 169);
+  return `<div class="qr-mark" aria-label="QR-V demonstration code"><span class="qr-grid">${[...cells].map(cell => `<i${cell === "1" ? " class=filled" : ""}></i>`).join("")}</span><b>✓</b></div>`;
 }
 
-app.get('/verify', (_req, res) => {
-  res.send(shell('Verify a QR-V Record', 'Public QR-V verification', `<main class="section"><div class="eyebrow">Public Verification</div><h1>Verify a QR-V record</h1><p class="lead">Enter a QRVID. The platform queries the canonical API and returns the registry state.</p><section class="card"><form class="stack" onsubmit="event.preventDefault();const v=document.getElementById('qrvid').value.trim();if(v)location.href='/verify/'+encodeURIComponent(v)"><label for="qrvid">QRVID</label><input id="qrvid" required placeholder="QRV-CERT-..."><button type="submit">Verify</button></form></section></main>`));
-});
+function renderHomePage(demoResult = { verificationState: "UNAVAILABLE", apiReachable: false }) {
+  const demoState = normalizeVerificationState(demoResult);
+  const integrity = demoResult.integrity || {};
+  const isVerified = demoState === "VERIFIED" && integrity.hashValid === true && integrity.signatureValid === true;
+  const displayedState = isVerified ? "VERIFIED" : (demoState === "VERIFIED" ? "UNAVAILABLE" : demoState);
+  const apiState = demoResult.apiReachable ? "Responding" : "Unavailable";
+  const useCases = [
+    ["Certificates", "Diplomas, training, professional credentials and awards.", "cert"],
+    ["Verified Contact Cards", "Dynamic vCards with registry status, privacy controls and analytics.", "vcard"],
+    ["Membership IDs", "Public-safe membership standing and organization-issued identity.", "id"],
+    ["Documents", "Agreements, notices, licenses and controlled official records.", "doc"],
+    ["Products", "Authenticity, origin, warranty and chain-of-custody verification.", "prod"],
+    ["Property & Assets", "Accountable references for physical and digital assets.", "asset"],
+  ];
+  return renderShell("Global Verification Network", `<section class="home-hero"><div class="network-pattern" aria-hidden="true"></div><div class="hero-copy"><p class="eyebrow">Global verification network</p><h1>Turn every<br>scan into proof.</h1><p class="hero-text">Registry-backed verification for certificates, credentials, documents, products, contact cards, and digital records.</p><div class="hero-actions"><a class="button button-cyan" href="/verify">Verify a Record</a><a class="button button-outline" href="/issuer">Become an Issuer</a></div><div class="micro-proof"><span>● Status monitored</span><span>QRVP-1</span><span>QVS-1.0</span></div><div class="crypto-chips"><span>SHA-256</span><span>Ed25519</span><span>Canonical JSON</span><span>TLS</span></div></div><article class="verify-card"><div class="card-kicker"><span class="live-dot"></span>Live verification demo</div><div class="verify-primary">${renderDemoQr()}<div><small>QRVID</small><strong>${escapeHtml(DEMO_QRVID)}</strong><span class="verified-badge${isVerified ? "" : " not-verified"}">${isVerified ? "✓" : "!"} ${escapeHtml(displayedState)}</span></div></div><dl><div><dt>Issuer</dt><dd>${escapeHtml(isVerified ? (demoResult.issuer || "Not disclosed") : "No active claim")}</dd></div><div><dt>Integrity</dt><dd>${escapeHtml(isVerified ? "Hash valid · Signature valid" : "Not confirmed")}</dd></div><div><dt>Standard</dt><dd>QVS-1.0</dd></div></dl><a href="/verify/${encodeURIComponent(DEMO_QRVID)}">Open registry result <span>↗</span></a></article></section>
+  <section class="network-rail" aria-label="QR-V network infrastructure status"><div><span class="live-dot"></span><strong>Network controls</strong><small>Two-node production topology</small></div>${[["Browser platform", "qrv.network", "Responding"], ["Verification route", "/verify/{qrvid}", "Canonical"], ["Registry route", "/registry/{qrvid}", "API-backed"], ["Verification API", "api.qrv.network", apiState], ["Demo integrity", "SHA-256 · Ed25519", isVerified ? "Valid" : "Not confirmed"]].map(([label, endpoint, state], index) => `<article><span>0${index + 1}</span><strong>${label}</strong><small>${endpoint}</small><b>${escapeHtml(state)}</b></article>`).join("")}</section>
+  <section class="trust-strip"><div><span>✓</span><strong>Registry-backed</strong><small>Canonical source records</small></div><div><span>⌁</span><strong>Cryptographically signed</strong><small>SHA-256 + Ed25519</small></div><div><span>◎</span><strong>Globally verifiable</strong><small>One scan, clear status</small></div></section>
+  <section class="vision-art"><img src="/assets/qrv-network-production-hero.jpeg" width="1536" height="1024" alt="QR-V Global Verification Network connecting QR verification across a world map and mobile device"><div><p class="eyebrow">Network vision</p><h2>The verification layer for QR codes.</h2><p>QR-V links a public QR locator to an issuer-controlled registry record, current lifecycle state, and cryptographic integrity result.</p></div></section>
+  <section class="section problem-section"><div class="section-heading"><p class="eyebrow">What QR-V solves</p><h2>A QR code can point anywhere. QR-V establishes what is true.</h2><p>Each scan resolves to a canonical registry entry, validates issuer authority, and checks the record’s current status and cryptographic integrity.</p></div><div class="comparison"><article class="compare-card"><span>01</span><h3>Ordinary QR codes</h3><p>A visual pointer with no built-in assurance about the destination, issuer, status, or underlying data.</p><ul><li>Destination can change</li><li>No canonical record</li><li>No revocation state</li></ul></article><div class="versus">→</div><article class="compare-card qrv-card"><span>02</span><h3>QR-V verification</h3><p>A structured reference backed by issuer identity, registry state, cryptographic integrity, and an auditable lifecycle.</p><ul><li>Known issuing authority</li><li>Deterministic status</li><li>Hash and signature checks</li></ul></article></div></section>
+  <section class="section flow-section"><div class="section-heading split"><div><p class="eyebrow">How verification works</p><h2>One scan. Six trust checks.</h2></div><p>QRVP-1 connects the physical or digital QR mark to the resolver, API, registry, and integrity layer.</p></div><ol class="flow-grid">${[["01", "Scan", "Scan a QR-V mark or enter the QRVID."], ["02", "Resolve", "Route through the canonical qrv.network verifier."], ["03", "Locate", "Find the issuer-backed registry record."], ["04", "Validate", "Confirm its SHA-256 hash and Ed25519 signature."], ["05", "Evaluate", "Resolve issuer, privacy, expiration, and lifecycle state."], ["06", "Return", "Display a deterministic verification result."]].map(([n, heading, text]) => `<li><span>${n}</span><h3>${heading}</h3><p>${text}</p></li>`).join("")}</ol></section>
+  <section class="section demo-band"><div><p class="eyebrow">Live demonstration</p><h2>Verify the canonical public record.</h2><p>The public verifier discloses only permitted fields and fails closed when a record cannot be trusted.</p></div><form class="verify-search" action="/verify" method="get"><label for="home-qrvid">Enter a QR-V identifier</label><div><input id="home-qrvid" name="qrvid" value="${escapeHtml(DEMO_QRVID)}" required><button class="button" type="submit">Verify now</button></div><small>Try the production-format demonstration record.</small></form></section>
+  <section class="section use-section"><div class="section-heading"><p class="eyebrow">Products and services</p><h2>One verification network. Multiple accountable record classes.</h2></div><div class="use-grid">${useCases.map(([title, text, id]) => `<article id="${id}"><span>Verified record</span><h3>${title}</h3><p>${text}</p><a href="${id === "vcard" ? "/products/verified-contact-card" : "/use-cases#" + id}">Explore solution →</a></article>`).join("")}</div></section>
+  <section class="section issuer-section"><div class="portal-preview"><div><span>Illustrative issuer-console preview</span><b>QR-V Demo Issuer</b><i>Sample data</i></div><section><article><small>Active records</small><strong>1,284</strong><span>Illustrative</span></article><article><small>Verifications</small><strong>8,421</strong><span>Illustrative</span></article><article><small>Revoked</small><strong>12</strong><span>Illustrative</span></article></section><table><thead><tr><th>QRVID</th><th>Record</th><th>Status</th></tr></thead><tbody><tr><td>...000001</td><td>Safety Certificate</td><td>Verified</td></tr><tr><td>...000142</td><td>Contact Card</td><td>Verified</td></tr><tr><td>...000889</td><td>Compliance Award</td><td>Expired</td></tr></tbody></table></div><div class="issuer-copy"><p class="eyebrow">Issuer operations</p><h2>Issue, manage, and revoke from one accountable workflow.</h2><p>Approved organizations receive a controlled workspace for certificates, contact cards, QR codes, analytics, API keys, and audit history.</p><ul><li>Structured record issuance</li><li>Instant QRVID generation</li><li>Privacy-aware disclosure</li><li>Lifecycle and revocation management</li></ul><a href="/issuer">Explore issuer access →</a></div></section>
+  <section class="section pricing-preview"><div class="section-heading split"><div><p class="eyebrow">Start issuing</p><h2>Plans built for pilots, teams, and institutions.</h2></div><a class="button button-outline" href="/pricing">View full pricing</a></div><div class="price-grid"><article><span>Pilot</span><strong>$0<small> / limited</small></strong><p>Validate one governed workflow with a controlled issuer pilot.</p></article><article class="featured"><em>Most selected</em><span>Starter</span><strong>$49<small> / month</small></strong><p>Issuer Portal access for up to 1,000 managed records.</p></article><article><span>Professional</span><strong>$299<small> / month</small></strong><p>Team controls, API access, and up to 25,000 records.</p></article></div></section>
+  <section class="section developer-band"><div><p class="eyebrow">Developer access</p><h2>Verification infrastructure with a clear contract.</h2><p>Integrate through deterministic REST responses, documented statuses, issuer APIs, and QRVP-1.</p><a class="button" href="/developers">Open developer portal</a></div><pre><code><b>GET</b> /api/v1/verify/${escapeHtml(DEMO_QRVID)}\n\n{\n  "status": <span>"VERIFIED"</span>,\n  "hashValid": true,\n  "signatureValid": true\n}</code></pre></section>
+  <section class="section origin-section"><div class="origin-mark">QR-V<sup>™</sup><span>Est. 2026</span></div><div><p class="eyebrow">Institutional trust</p><h2>Built to make verification accountable.</h2><p>QR-V™ is commercially owned by ONEGODIAN, LLC and was founded and originated by Gregory L. Jones, also known as One Gregory Onegodian™. The platform is structured around traceable issuer authority, canonical records, public-safe verification, and privacy-aware disclosure.</p><a href="/about">Read the platform record →</a></div></section>
+  <section class="final-cta"><p class="eyebrow">The infrastructure of trust</p><h2>Turn your next record into verifiable proof.</h2><div><a class="button" href="/issuer">Become an Issuer</a><a class="button button-outline" href="/verify">Verify a Record</a></div></section>`, "Registry-backed verification for certificates, credentials, documents, products, contact cards, and digital records.");
+}
 
-app.get('/verify/:qrvid', async (req, res) => {
-  const qrvid = String(req.params.qrvid || '').trim().toUpperCase();
-  try {
-    const { response, payload } = await api(`/verify/${encodeURIComponent(qrvid)}`);
-    const state = String(payload.state || payload.status || (response.status === 404 ? 'NOT_FOUND' : 'UNAVAILABLE')).toUpperCase();
-    const record = payload.record || payload;
-    const fields = [
-      ['QRVID', qrvid], ['Issuer', record.issuer], ['Record Type', record.recordType], ['Recipient / Owner', record.recipient || record.owner],
-      ['Title', record.title], ['Issued', record.issueDate || record.createdAt], ['Expires', record.expirationDate], ['Hash', record.hash], ['Verified At', payload.verifiedAt || new Date().toISOString()]
-    ].filter(([,value]) => value !== null && value !== undefined && value !== '');
-    res.status(response.status === 404 ? 404 : 200).send(shell(`QR-V ${state} • ${qrvid}`, `QR-V verification result ${state}`, `<main class="section"><div class="eyebrow">Verification Result</div><h1>${state === 'VERIFIED' ? 'Verified QR-V™ Record' : 'QR-V™ Verification Result'}</h1><p><span class="status ${escapeHtml(state)}">${escapeHtml(state)}</span></p><section class="card"><table class="table">${fields.map(([k,v]) => `<tr><th>${escapeHtml(k)}</th><td class="${k === 'QRVID' || k === 'Hash' ? 'mono' : ''}">${escapeHtml(v)}</td></tr>`).join('')}</table></section><div class="actions"><a class="btn" href="/verify">Verify Another</a><a class="btn alt" href="/registry/${encodeURIComponent(qrvid)}">Registry View</a></div></main>`));
-  } catch (error) {
-    res.status(503).send(shell('Verification unavailable', 'Verification service unavailable', `<main class="section"><div class="eyebrow">Verification</div><h1>Verification temporarily unavailable</h1><p class="lead">The platform could not reach the canonical API. No verification result was asserted.</p><div class="notice">${escapeHtml(error.message)}</div></main>`));
-  }
-});
+shell = renderShell;
+homePage = renderHomePage;
 
-app.get('/registry', (_req, res) => {
-  res.send(shell('QR-V Registry', 'Public registry lookup', `<main class="section"><div class="eyebrow">Registry</div><h1>Public registry lookup</h1><p class="lead">The canonical datastore remains behind api.qrv.network. This page is the human-readable registry interface.</p><section class="card"><form class="stack" onsubmit="event.preventDefault();const v=document.getElementById('registryQrvid').value.trim();if(v)location.href='/registry/'+encodeURIComponent(v)"><label for="registryQrvid">QRVID</label><input id="registryQrvid" required placeholder="QRV-CERT-..."><button type="submit">Open Record</button></form></section></main>`));
-});
-app.get('/explorer', (_req, res) => res.redirect(308, '/registry'));
-app.get('/explorer/:qrvid', (req, res) => res.redirect(308, `/registry/${encodeURIComponent(req.params.qrvid)}`));
-app.get('/registry/:qrvid', async (req, res) => {
-  const qrvid = String(req.params.qrvid || '').trim().toUpperCase();
-  try {
-    const { response, payload } = await api(`/records/${encodeURIComponent(qrvid)}`);
-    if (!response.ok) return res.status(response.status).send(page({ eyebrow: 'Registry', title: 'Record not found', lead: `No public registry record was found for ${qrvid}.`, actions: [['Search Registry','/registry']] }));
-    const record = payload.record || {};
-    res.send(shell(`Registry • ${qrvid}`, 'QR-V registry record', `<main class="section"><div class="eyebrow">Registry Record</div><h1>${escapeHtml(qrvid)}</h1><section class="card"><pre class="mono">${escapeHtml(JSON.stringify(record, null, 2))}</pre></section><div class="actions"><a class="btn" href="/verify/${encodeURIComponent(qrvid)}">Verify Record</a></div></main>`));
-  } catch (error) {
-    res.status(503).send(page({ eyebrow: 'Registry', title: 'Registry unavailable', lead: error.message }));
-  }
-});
+app.get("/",async(_q,res)=>{try{const {response,data}=await fetchJson(`/verify/${encodeURIComponent(DEMO_QRVID)}`);return res.type("html").send(homePage({...data,apiReachable:response.status<500}));}catch{return res.type("html").send(homePage({verificationState:"UNAVAILABLE",apiReachable:false}));}});
+for(const [path,page] of Object.entries(pages))app.get(path,(_q,res)=>res.type("html").send(standardPage(page)));
+app.get("/products/verified-contact-card",(_q,res)=>res.type("html").send(contactCardProductPage()));
+app.get("/verify",(req,res)=>{const id=normalizeQrvid(req.query.qrvid);return id?res.redirect(302,`/verify/${encodeURIComponent(id)}`):res.type("html").send(verifyForm());});
+app.get("/verify/:qrvid",async(req,res)=>{const result=await verificationResult(req.params.qrvid);res.status(result.httpStatus).type("html").send(result.html);});
+app.get("/registry/:qrvid",async(req,res)=>{try{const {response,data}=await fetchJson(`/registry/${encodeURIComponent(normalizeQrvid(req.params.qrvid))}`);res.status(response.status).type("html").send(shell("Registry Record",`<section class="hero"><h1>Registry record</h1></section><section class="card"><pre>${escapeHtml(JSON.stringify(data,null,2))}</pre></section>`));}catch{res.status(503).type("html").send(shell("Registry Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Registry lookup unavailable.</h1></section>`));}});
+app.get("/explorer",(_q,res)=>res.redirect(308,"/registry"));
+app.get("/explorer/:qrvid",(req,res)=>res.redirect(308,`/registry/${encodeURIComponent(req.params.qrvid)}`));
+app.get("/store",(_q,res)=>res.redirect(308,"/pricing"));
+app.get("/vcard/:qrvid.vcf",async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);if(!QRVID_FORMAT.test(id))return res.status(422).send("Invalid QRVID");try{const response=await fetchApi(`/vcards/${encodeURIComponent(id)}.vcf`,{headers:{accept:"text/vcard"}});const body=Buffer.from(await response.arrayBuffer());res.status(response.status);for(const header of ["content-type","content-disposition","cache-control"])if(response.headers.get(header))res.setHeader(header,response.headers.get(header));return res.send(body);}catch{return res.status(503).type("text/plain").send("Verified Contact Card is unavailable");}});
+app.get("/qr/:qrvid.svg",async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);if(!QRVID_FORMAT.test(id))return res.status(422).send("Invalid QRVID");try{const dark=qrColor(req.query.dark,"#041B3D");const light=qrColor(req.query.light,"#FFFFFF");const svg=await QRCode.toString(`${ROOT_URL}/verify/${encodeURIComponent(id)}`,{type:"svg",errorCorrectionLevel:"H",margin:4,width:1200,color:{dark,light}});res.setHeader("Content-Disposition",`attachment; filename="qrv-${id.toLowerCase()}.svg"`);res.setHeader("Cache-Control","public, max-age=3600");return res.type("image/svg+xml").send(svg);}catch{return res.status(500).send("QR generation failed");}});
+app.get("/qr/:qrvid.png",async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);if(!QRVID_FORMAT.test(id))return res.status(422).send("Invalid QRVID");try{const dark=qrColor(req.query.dark,"#041B3D");const light=qrColor(req.query.light,"#FFFFFF");const png=await QRCode.toBuffer(`${ROOT_URL}/verify/${encodeURIComponent(id)}`,{type:"png",errorCorrectionLevel:"H",margin:4,width:1200,color:{dark,light}});res.setHeader("Content-Disposition",`attachment; filename="qrv-${id.toLowerCase()}.png"`);res.setHeader("Cache-Control","public, max-age=3600");return res.type("image/png").send(png);}catch{return res.status(500).send("QR generation failed");}});
 
-app.get('/api-reference', (_req, res) => res.send(shell('QR-V API Reference', 'QR-V API reference', `<main class="section"><div class="eyebrow">API Reference</div><h1>Canonical API node</h1><p class="lead">Base URL: <span class="mono">https://api.qrv.network/api/v1</span></p><section class="card"><table class="table"><tr><th>Method</th><th>Path</th><th>Purpose</th></tr><tr><td>GET</td><td class="mono">/verify/:qrvid</td><td>Public verification</td></tr><tr><td>GET</td><td class="mono">/records/:qrvid</td><td>Public-safe registry record</td></tr><tr><td>POST</td><td class="mono">/records</td><td>Authorized issuance</td></tr><tr><td>POST</td><td class="mono">/records/:qrvid/revoke</td><td>Authorized revocation</td></tr><tr><td>GET</td><td class="mono">/audit/:qrvid</td><td>Authorized audit history</td></tr></table></section></main>`)));
+app.get("/issuer",(req,res)=>res.redirect(302,readSession(req)?"/issuer/dashboard":"/issuer/login"));
+app.get("/issuer/login",(req,res)=>readSession(req)?res.redirect(302,"/issuer/dashboard"):res.type("html").send(loginPage()));
+app.post("/issuer/login",loginRateLimiter,(req,res)=>{if(!portalConfigured())return res.status(503).type("html").send(loginPage("Issuer authentication is not configured."));if(!safeEqual(req.body.username,PORTAL_USER)||!verifyPassword(req.body.password))return res.status(401).type("html").send(loginPage("Invalid credentials."));const session={sub:PORTAL_USER,issuerId:ISSUER_ID,role:"issuer_admin",csrf:crypto.randomBytes(24).toString("base64url"),exp:Date.now()+SESSION_TTL_SECONDS*1000};res.setHeader("Set-Cookie",sessionCookie(signSession(session)));return res.redirect(303,"/issuer/dashboard");});
+app.post("/issuer/logout",requireIssuer,verifyCsrf,(req,res)=>{res.setHeader("Set-Cookie",sessionCookie("",0));res.redirect(303,"/issuer/login");});
 
-app.get('/status', async (_req, res) => {
-  let health = { ok: false }, ready = { ready: false };
-  try { health = (await apiRoot('/healthz')).payload; } catch {}
-  try { ready = (await apiRoot('/readyz')).payload; } catch {}
-  const apiOperational = health.ok === true;
-  const apiReady = ready.ready === true || ready.ok === true;
-  res.send(shell('QR-V Network Status', 'QR-V platform and API status', `<main class="section"><div class="eyebrow">Network Status</div><h1>Two-node production status</h1><section class="grid"><article class="card"><h2>qrv.network</h2><p class="ok">OPERATIONAL</p><p>Public platform node</p></article><article class="card"><h2>api.qrv.network</h2><p class="${apiOperational ? 'ok' : 'bad'}">${apiOperational ? 'OPERATIONAL' : 'UNAVAILABLE'}</p><p>API process health</p></article><article class="card"><h2>Registry</h2><p class="${apiReady ? 'ok' : 'bad'}">${apiReady ? 'READY' : 'NOT READY'}</p><p>PostgreSQL readiness through API node</p></article></section></main>`));
-});
+app.get("/issuer/dashboard",requireIssuer,async(req,res)=>{try{const {response,data}=await fetchJson("/issuer/analytics",{auth:true});if(!response.ok)throw new Error("API unavailable");res.type("html").send(shell("Issuer Dashboard",`<section class="hero"><h1>Issuer Dashboard</h1><p>${escapeHtml(ISSUER_NAME)}</p>${issuerNav()}</section><section class="grid">${[["Total",data.total],["Active",data.active],["Revoked",data.revoked],["Expired",data.expired]].map(([k,v])=>`<article class="card"><h3>${escapeHtml(k)}</h3><p>${Number(v||0)}</p></article>`).join("")}</section><form method="post" action="/issuer/logout"><input type="hidden" name="csrf" value="${escapeHtml(req.issuerSession.csrf)}"><button class="btn alt">Sign out</button></form>`));}catch{res.status(503).type("html").send(shell("Issuer Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Issuer API unavailable.</h1><p>No changes were made.</p></section>`));}});
+app.get("/issuer/records",requireIssuer,async(_req,res)=>{try{const {response,data}=await fetchJson("/issuer/records",{auth:true});if(!response.ok)throw new Error();const rows=(data.records||[]).map(r=>`<tr><td><a href="/issuer/records/${encodeURIComponent(r.qrvid)}">${escapeHtml(r.qrvid)}</a></td><td>${escapeHtml(r.record_type||"")}</td><td>${escapeHtml(r.title||"")}</td><td>${escapeHtml(r.status)}</td><td>${escapeHtml(r.visibility)}</td></tr>`).join("");res.type("html").send(shell("Issuer Records",`<section class="hero"><h1>Issuer Records</h1>${issuerNav()}<div class="actions"><a class="btn" href="/issuer/records/new">Issue certificate</a><a class="btn alt" href="/issuer/vcards/new">Create contact card</a></div></section><section class="card"><table><thead><tr><th>QRVID</th><th>Type</th><th>Title</th><th>Status</th><th>Visibility</th></tr></thead><tbody>${rows||"<tr><td colspan=5>No records.</td></tr>"}</tbody></table></section>`));}catch{res.status(503).type("html").send(shell("Records Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Records are unavailable.</h1></section>`));}});
+app.get("/issuer/records/new",requireIssuer,(req,res)=>res.type("html").send(shell("Issue Certificate",`<section class="hero"><h1>Issue Certificate</h1>${issuerNav()}</section><section class="card"><form class="form" method="post" action="/issuer/records/new"><input type="hidden" name="csrf" value="${escapeHtml(req.issuerSession.csrf)}"><label>Recipient name<input class="input" name="subject" required></label><label>Certificate title<input class="input" name="title" required></label><label>Description<textarea name="description"></textarea></label><label>Expiration date<input class="input" type="date" name="expiresAt"></label><label>Visibility<select name="visibility"><option value="public">Public</option><option value="restricted">Restricted</option><option value="private">Private</option></select></label><button class="btn">Issue certificate</button></form></section>`)));
+app.post("/issuer/records/new",requireIssuer,verifyCsrf,async(req,res)=>{try{const body={recordType:"CERT",issuer:ISSUER_NAME,subject:String(req.body.subject||"").trim(),title:String(req.body.title||"").trim(),description:String(req.body.description||"").trim(),expiresAt:req.body.expiresAt||null,visibility:req.body.visibility||"public"};const {response,data}=await fetchJson("/registry/create",{method:"POST",auth:true,headers:{"content-type":"application/json"},body:JSON.stringify(body)});if(!response.ok)return res.status(response.status).type("html").send(shell("Issuance Failed",`<section class="hero"><span class="status bad">FAILED</span><h1>Certificate was not issued.</h1><pre>${escapeHtml(JSON.stringify(data,null,2))}</pre></section>`));return res.redirect(303,`/issuer/records/${encodeURIComponent(data.qrvid)}`);}catch{return res.status(503).type("html").send(shell("Issuance Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Certificate was not issued.</h1></section>`));}});
+app.get("/issuer/vcards/new",requireIssuer,(req,res)=>res.type("html").send(shell("Create Verified Contact Card",`<section class="hero"><span class="status ok">DYNAMIC • VERIFIED</span><h1>Create a Verified Contact Card</h1><p>The QRVID remains stable when contact details are updated. Every revision is re-hashed, signed, and audited.</p>${issuerNav()}</section><section class="card">${contactCardForm(req.issuerSession.csrf)}</section>`)));
+app.post("/issuer/vcards/new",requireIssuer,verifyCsrf,async(req,res)=>{try{const body={recordType:"VCARD",issuer:ISSUER_NAME,visibility:req.body.visibility||"public",contact:contactCardFromForm(req.body)};const {response,data}=await fetchJson("/registry/create",{method:"POST",auth:true,headers:{"content-type":"application/json"},body:JSON.stringify(body)});if(!response.ok)return res.status(response.status).type("html").send(shell("Contact Card Failed",`<section class="hero"><span class="status bad">FAILED</span><h1>Contact card was not created.</h1><pre>${escapeHtml(JSON.stringify(data,null,2))}</pre></section>`));return res.redirect(303,`/issuer/records/${encodeURIComponent(data.qrvid)}`);}catch{return res.status(503).type("html").send(shell("Contact Card Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Contact card was not created.</h1></section>`));}});
+app.get("/issuer/vcards/:qrvid/edit",requireIssuer,async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);try{const {response,data}=await fetchJson(`/issuer/records/${encodeURIComponent(id)}`,{auth:true});if(!response.ok||data.record?.record_type!=="VCARD")return res.status(404).type("html").send(shell("Contact Card Not Found",`<section class="hero"><h1>Verified Contact Card not found.</h1></section>`));const record=data.record;return res.type("html").send(shell("Edit Verified Contact Card",`<section class="hero"><h1>Edit without reprinting</h1><p>${escapeHtml(id)}</p>${issuerNav()}</section><section class="card">${contactCardForm(req.issuerSession.csrf,record.payload?.contact||{},record.visibility,`/issuer/vcards/${encodeURIComponent(id)}/edit`,"Update and re-sign")}</section>`));}catch{return res.status(503).type("html").send(shell("Contact Card Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Contact card is unavailable.</h1></section>`));}});
+app.post("/issuer/vcards/:qrvid/edit",requireIssuer,verifyCsrf,async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);try{const {response,data}=await fetchJson(`/issuer/vcards/${encodeURIComponent(id)}/update`,{method:"POST",auth:true,headers:{"content-type":"application/json"},body:JSON.stringify({visibility:req.body.visibility||"public",contact:contactCardFromForm(req.body)})});if(!response.ok)return res.status(response.status).type("html").send(shell("Update Failed",`<section class="hero"><span class="status bad">FAILED</span><h1>Contact card was not updated.</h1><pre>${escapeHtml(JSON.stringify(data,null,2))}</pre></section>`));return res.redirect(303,`/issuer/records/${encodeURIComponent(id)}`);}catch{return res.status(503).type("html").send(shell("Update Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Contact card was not updated.</h1></section>`));}});
+app.get("/issuer/vcards/:qrvid/analytics",requireIssuer,async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);try{const {response,data}=await fetchJson(`/issuer/vcards/${encodeURIComponent(id)}/analytics`,{auth:true});if(!response.ok)return res.status(response.status).type("html").send(shell("Analytics Unavailable",`<section class="hero"><h1>Analytics unavailable.</h1></section>`));const daily=(data.daily||[]).map(row=>`<tr><td>${escapeHtml(String(row.day).slice(0,10))}</td><td>${Number(row.scans||0)}</td><td>${Number(row.downloads||0)}</td></tr>`).join("");return res.type("html").send(shell("Contact Card Analytics",`<section class="hero"><h1>Verified Contact Card analytics</h1><p>${escapeHtml(id)} • aggregate activity only</p>${issuerNav()}</section><section class="grid"><article class="card"><h3>Verifications</h3><p>${Number(data.scans||0)}</p></article><article class="card"><h3>Contact downloads</h3><p>${Number(data.downloads||0)}</p></article><article class="card"><h3>Last interaction</h3><p>${escapeHtml(data.last_interaction_at||"None")}</p></article></section><section class="card"><table><thead><tr><th>Day</th><th>Verifications</th><th>Downloads</th></tr></thead><tbody>${daily||"<tr><td colspan=3>No activity.</td></tr>"}</tbody></table></section>`));}catch{return res.status(503).type("html").send(shell("Analytics Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Analytics unavailable.</h1></section>`));}});
+app.get("/issuer/records/:qrvid",requireIssuer,async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);try{const {response,data}=await fetchJson(`/issuer/records/${encodeURIComponent(id)}`,{auth:true});if(!response.ok)return res.status(response.status).type("html").send(shell("Record Not Found",`<section class="hero"><h1>Record not found.</h1></section>`));const r=data.record||{};const vcardActions=r.record_type==="VCARD"?`<div class="actions"><a class="btn" href="/issuer/vcards/${encodeURIComponent(id)}/edit">Edit contact card</a><a class="btn alt" href="/issuer/vcards/${encodeURIComponent(id)}/analytics">View analytics</a><a class="btn alt" href="/vcard/${encodeURIComponent(id)}.vcf">Download VCF</a></div>`:"";res.type("html").send(shell("Issuer Record",`<section class="hero"><h1>${escapeHtml(id)}</h1>${issuerNav()}${vcardActions}</section><section class="card"><div class="row"><b>Type</b><span>${escapeHtml(r.record_type)}</span></div><div class="row"><b>Title</b><span>${escapeHtml(r.title)}</span></div><div class="row"><b>Subject</b><span>${escapeHtml(r.owner)}</span></div><div class="row"><b>Status</b><span>${escapeHtml(r.status)}</span></div><div class="row"><b>Verification</b><a href="/verify/${encodeURIComponent(id)}">${escapeHtml(ROOT_URL)}/verify/${escapeHtml(id)}</a></div><div class="row"><b>QR files</b><span><a href="/qr/${encodeURIComponent(id)}.png">PNG</a> · <a href="/qr/${encodeURIComponent(id)}.svg">SVG</a></span></div></section><section class="card"><h2>Revoke</h2><form class="form" method="post" action="/issuer/records/${encodeURIComponent(id)}/revoke"><input type="hidden" name="csrf" value="${escapeHtml(req.issuerSession.csrf)}"><label>Reason<textarea name="reason" required></textarea></label><button class="btn">Revoke record</button></form></section>`));}catch{res.status(503).type("html").send(shell("Record Unavailable",`<section class="hero"><span class="status bad">UNAVAILABLE</span><h1>Record unavailable.</h1></section>`));}});
+app.post("/issuer/records/:qrvid/revoke",requireIssuer,verifyCsrf,async(req,res)=>{const id=normalizeQrvid(req.params.qrvid);try{const {response,data}=await fetchJson(`/registry/${encodeURIComponent(id)}/revoke`,{method:"POST",auth:true,headers:{"content-type":"application/json"},body:JSON.stringify({reason:String(req.body.reason||"").trim()})});if(!response.ok)return res.status(response.status).json(data);return res.redirect(303,`/issuer/records/${encodeURIComponent(id)}`);}catch{return res.status(503).json({ok:false,error:"API_UNAVAILABLE"});}});
+app.get("/issuer/certificates",requireIssuer,(_q,res)=>res.redirect(302,"/issuer/records"));
+app.get("/issuer/certificates/new",requireIssuer,(_q,res)=>res.redirect(302,"/issuer/records/new"));
+app.get("/issuer/revocations",requireIssuer,(_q,res)=>res.redirect(302,"/issuer/records"));
+for(const path of ["/issuer/analytics","/issuer/api-keys","/issuer/team","/issuer/billing","/issuer/settings","/issuer/support"]){app.get(path,requireIssuer,(_q,res)=>res.type("html").send(shell("Issuer Control",`<section class="hero"><h1>${escapeHtml(path.split("/").pop().replace(/-/g," "))}</h1>${issuerNav()}<p>This control is restricted and fails closed until its production provider is configured.</p></section>`)));}
 
-app.get('/issuer', (req, res) => {
-  if (validSession(req)) return res.redirect(303, '/issuer/dashboard');
-  const configured = Boolean(SESSION_SECRET && ISSUER_ACCESS_CODE && API_WRITE_KEY);
-  res.status(configured ? 200 : 503).send(shell('QR-V Issuer Portal', 'Issuer access', `<main class="section"><div class="eyebrow">Issuer Portal</div><h1>Issue and manage QR-V records</h1><p class="lead">The Issuer Portal now lives directly under qrv.network. Authentication and write credentials remain server-side.</p>${configured ? `<section class="card"><form class="stack" method="post" action="/issuer/login"><label for="accessCode">Issuer access code</label><input id="accessCode" type="password" name="accessCode" required autocomplete="current-password"><button type="submit">Sign In</button></form></section>` : `<div class="notice">Issuer access is disabled until SESSION_SECRET, ISSUER_ACCESS_CODE, and QRV_PLATFORM_API_KEY are configured.</div>`}</main>`));
-});
+app.get("/status",async(_req,res)=>{try{const {response,data}=await fetchJson(`${API_ROOT_URL}/readyz`);const ready=response.ok&&data.ready===true;res.status(ready?200:503).type("html").send(shell("Network Status",`<section class="hero"><h1>Network status</h1></section><section class="grid"><article class="card"><h3>qrv.network</h3><span class="status ok">RESPONDING</span></article><article class="card"><h3>api.qrv.network</h3><span class="status ${ready?"ok":"bad"}">${ready?"READY":"NOT READY"}</span></article></section>`));}catch{res.status(503).type("html").send(shell("Network Status",`<section class="hero"><h1>Network status</h1><span class="status bad">API UNAVAILABLE</span></section>`));}});
+app.get("/health",(_q,res)=>res.json({ok:true,service:SERVICE_NAME,status:"running",version:VERSION,startedAt:STARTED_AT,timestamp:new Date().toISOString()}));
+app.get("/healthz",(_q,res)=>res.json({ok:true,service:SERVICE_NAME,status:"healthy",version:VERSION}));
+app.get(["/ready","/readyz"],async(_q,res)=>{if(!portalConfigured())return res.status(503).json({ok:false,ready:false,service:SERVICE_NAME,error:"ISSUER_CONFIGURATION_REQUIRED"});try{const {response}=await fetchJson(`${API_ROOT_URL}/readyz`);return res.status(response.ok?200:503).json({ok:response.ok,ready:response.ok,service:SERVICE_NAME,apiReady:response.ok});}catch{return res.status(503).json({ok:false,ready:false,service:SERVICE_NAME,error:"API_UNAVAILABLE"});}});
+app.get("/version",(_q,res)=>res.json({service:SERVICE_NAME,version:VERSION,architecture:"two-node",startedAt:STARTED_AT}));
+app.get("/robots.txt",(_q,res)=>res.type("text/plain").send("User-agent: *\nAllow: /\nDisallow: /issuer/dashboard\nDisallow: /issuer/records\nSitemap: https://qrv.network/sitemap.xml\n"));
+app.get("/sitemap.xml",(_q,res)=>{const paths=["/","/products","/products/verified-contact-card","/protocol","/how-it-works","/verify","/registry","/use-cases","/developers","/docs","/pricing","/about","/security","/status"];res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map(path=>`<url><loc>${ROOT_URL}${path}</loc></url>`).join("")}</urlset>`);});
+app.get("/:qrvid",(req,res,next)=>{const id=normalizeQrvid(req.params.qrvid);return QRVID_FORMAT.test(id)?res.redirect(308,`/verify/${encodeURIComponent(id)}`):next();});
+app.use((_q,res)=>res.status(404).type("html").send(shell("Not Found",`<section class="hero"><span class="status bad">404</span><h1>Page not found.</h1></section>`)));
+app.use((_error,_req,res,_next)=>res.status(500).type("html").send(shell("Platform Error",`<section class="hero"><span class="status bad">ERROR</span><h1>The request could not be completed.</h1></section>`)));
 
-app.post('/issuer/login', (req, res) => {
-  if (!SESSION_SECRET || !ISSUER_ACCESS_CODE || !API_WRITE_KEY) return res.status(503).send('Issuer access not configured');
-  if (!safeEqual(req.body?.accessCode, ISSUER_ACCESS_CODE)) return res.status(401).send(shell('Access denied', 'Issuer access denied', `<main class="section"><h1>Access denied</h1><p class="lead">The issuer access code was not accepted.</p><a class="btn" href="/issuer">Try Again</a></main>`));
-  const token = createSessionToken();
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/issuer; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS/1000)}${NODE_ENV === 'production' ? '; Secure' : ''}`);
-  return res.redirect(303, '/issuer/dashboard');
-});
-
-app.post('/issuer/logout', (_req, res) => {
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/issuer; HttpOnly; SameSite=Strict; Max-Age=0${NODE_ENV === 'production' ? '; Secure' : ''}`);
-  res.redirect(303, '/issuer');
-});
-
-app.get('/issuer/dashboard', requireIssuer, async (_req, res) => {
-  let records = [];
-  let error = '';
-  try {
-    const result = await api('/records?limit=25', { write: true });
-    records = result.payload.records || [];
-    if (!result.response.ok) error = result.payload?.error?.message || 'Unable to load records';
-  } catch (err) { error = err.message; }
-  res.send(shell('Issuer Dashboard', 'QR-V issuer dashboard', `<main class="section"><div class="eyebrow">Issuer Dashboard</div><h1>Record operations</h1><div class="actions"><a class="btn" href="/issuer/records/new">Issue Record</a><form method="post" action="/issuer/logout"><button class="btn alt" type="submit">Sign Out</button></form></div>${error ? `<div class="notice">${escapeHtml(error)}</div>` : ''}<section class="card"><table class="table"><tr><th>QRVID</th><th>Type</th><th>Owner</th><th>Status</th><th></th></tr>${records.map((record) => `<tr><td class="mono">${escapeHtml(record.qrvid)}</td><td>${escapeHtml(record.recordType)}</td><td>${escapeHtml(record.owner || record.recipient || '')}</td><td><span class="status ${escapeHtml(record.state)}">${escapeHtml(record.state)}</span></td><td><a href="/issuer/records/${encodeURIComponent(record.qrvid)}">Open</a></td></tr>`).join('') || '<tr><td colspan="5">No records returned.</td></tr>'}</table></section></main>`));
-});
-
-app.get('/issuer/records/new', requireIssuer, (_req, res) => {
-  res.send(shell('Issue QR-V Record', 'Create registry-backed record', `<main class="section"><div class="eyebrow">Issue Record</div><h1>Create a QR-V record</h1><section class="card"><form class="stack" method="post" action="/issuer/records"><label>Record type</label><select name="recordType"><option value="certificate">Certificate</option><option value="membership">Membership</option><option value="product">Product</option><option value="document">Document</option><option value="asset">Asset</option><option value="property">Property</option></select><label>Issuer</label><input name="issuer" required><label>Recipient / Owner</label><input name="owner"><label>Title</label><input name="title"><label>Issue date</label><input type="date" name="issueDate" value="${new Date().toISOString().slice(0,10)}"><label>Expiration date</label><input type="date" name="expirationDate"><button type="submit">Issue QR-V Record</button></form></section></main>`));
-});
-
-app.post('/issuer/records', requireIssuer, async (req, res) => {
-  try {
-    const body = {
-      recordType: req.body.recordType,
-      issuer: req.body.issuer,
-      owner: req.body.owner || null,
-      title: req.body.title || null,
-      issueDate: req.body.issueDate || null,
-      expirationDate: req.body.expirationDate || null
-    };
-    const { response, payload } = await api('/records', { method: 'POST', write: true, body });
-    if (!response.ok) return res.status(response.status).send(shell('Issuance failed', 'QR-V issuance failed', `<main class="section"><h1>Issuance failed</h1><div class="notice">${escapeHtml(payload?.error?.message || 'The API rejected the record.')}</div><a class="btn" href="/issuer/records/new">Try Again</a></main>`));
-    return res.redirect(303, `/issuer/records/${encodeURIComponent(payload.qrvid)}`);
-  } catch (error) {
-    return res.status(503).send(shell('Issuance unavailable', 'QR-V issuance unavailable', `<main class="section"><h1>Issuance unavailable</h1><div class="notice">${escapeHtml(error.message)}</div></main>`));
-  }
-});
-
-app.get('/issuer/records/:qrvid', requireIssuer, async (req, res) => {
-  const qrvid = String(req.params.qrvid || '').trim().toUpperCase();
-  try {
-    const { response, payload } = await api(`/records/${encodeURIComponent(qrvid)}`);
-    if (!response.ok) return res.status(response.status).send(page({ eyebrow:'Issuer', title:'Record not found', lead:qrvid }));
-    const record = payload.record || {};
-    res.send(shell(`Issuer • ${qrvid}`, 'Issuer record detail', `<main class="section"><div class="eyebrow">Issuer Record</div><h1>${escapeHtml(qrvid)}</h1><section class="grid"><article class="card"><h2>${escapeHtml(record.title || record.recordType || 'QR-V Record')}</h2><p>Issuer: ${escapeHtml(record.issuer || '')}</p><p>Owner: ${escapeHtml(record.owner || record.recipient || '')}</p><p><span class="status ${escapeHtml(record.state)}">${escapeHtml(record.state)}</span></p><p class="mono">${escapeHtml(record.hash || '')}</p></article><article class="card"><h2>Verification QR</h2><img alt="QR-V verification QR code" src="/qr/${encodeURIComponent(qrvid)}.svg" style="max-width:260px;width:100%;background:#fff;padding:10px;border-radius:14px"><p class="mono">${APP_ORIGIN}/verify/${escapeHtml(qrvid)}</p></article><article class="card"><h2>Lifecycle</h2><a class="btn" href="/verify/${encodeURIComponent(qrvid)}">Open Verification</a>${record.state === 'VERIFIED' ? `<form class="stack" method="post" action="/issuer/records/${encodeURIComponent(qrvid)}/revoke"><label>Revocation reason</label><input name="reason" placeholder="Credential withdrawn"><button class="danger" type="submit">Revoke Record</button></form>` : ''}</article></section></main>`));
-  } catch (error) {
-    res.status(503).send(page({ eyebrow:'Issuer', title:'Record unavailable', lead:error.message }));
-  }
-});
-
-app.post('/issuer/records/:qrvid/revoke', requireIssuer, async (req, res) => {
-  const qrvid = String(req.params.qrvid || '').trim().toUpperCase();
-  try {
-    const { response, payload } = await api(`/records/${encodeURIComponent(qrvid)}/revoke`, { method:'POST', write:true, body:{ reason:req.body.reason || null } });
-    if (!response.ok) return res.status(response.status).send(shell('Revocation failed','QR-V revocation failed',`<main class="section"><h1>Revocation failed</h1><div class="notice">${escapeHtml(payload?.error?.message || 'Unable to revoke record')}</div></main>`));
-    return res.redirect(303, `/issuer/records/${encodeURIComponent(qrvid)}`);
-  } catch (error) {
-    return res.status(503).send(page({ eyebrow:'Issuer', title:'Revocation unavailable', lead:error.message }));
-  }
-});
-
-app.get('/qr/:qrvid.svg', async (req, res) => {
-  const qrvid = String(req.params.qrvid || '').trim().toUpperCase();
-  if (!/^QRV-[A-Z0-9][A-Z0-9-]{2,127}$/.test(qrvid)) return res.status(422).send('Invalid QRVID');
-  try {
-    const svg = await QRCode.toString(`${APP_ORIGIN}/verify/${encodeURIComponent(qrvid)}`, { type:'svg', errorCorrectionLevel:'M', margin:4 });
-    res.type('image/svg+xml').send(svg);
-  } catch {
-    res.status(500).send('QR generation failed');
-  }
-});
-
-app.get('/healthz', (_req,res) => res.json({ ok:true, status:'ok', service:SERVICE, version:VERSION, architecture:'two-node-consolidated', timestamp:new Date().toISOString() }));
-app.get('/health', (_req,res) => res.json({ ok:true, status:'ok', service:SERVICE, version:VERSION, timestamp:new Date().toISOString() }));
-app.get('/readyz', async (_req,res) => {
-  try {
-    const { response, payload } = await apiRoot('/readyz');
-    return res.status(response.ok ? 200 : 503).json({ ok:response.ok, ready:response.ok, service:SERVICE, api:payload });
-  } catch (error) {
-    return res.status(503).json({ ok:false, ready:false, service:SERVICE, error:error.message });
-  }
-});
-app.get('/version', (_req,res) => res.json({ ok:true, service:SERVICE, version:VERSION, startedAt:STARTED_AT, platform:APP_ORIGIN, api:API_BASE_URL }));
-
-app.get('/robots.txt', (_req,res) => res.type('text/plain').send('User-agent: *\nAllow: /\nDisallow: /issuer/dashboard\nDisallow: /issuer/records\nSitemap: https://qrv.network/sitemap.xml\n'));
-app.get('/sitemap.xml', (_req,res) => {
-  const paths = ['/', '/protocol','/how-it-works','/verify','/registry','/use-cases','/developers','/api-reference','/docs','/pricing','/about','/security','/certificate-verification','/enterprise','/status'];
-  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map((path) => `<url><loc>${APP_ORIGIN}${path}</loc></url>`).join('')}</urlset>`);
-});
-
-app.get('/:qrvid(QRV-[A-Za-z0-9-]+)', (req,res) => res.redirect(308, `/verify/${encodeURIComponent(req.params.qrvid.toUpperCase())}`));
-app.use((req,res) => res.status(404).send(page({ eyebrow:'QR-V', title:'Page not found', lead:`No route exists for ${req.path}.`, actions:[['Home','/']] })));
-app.use((error,_req,res,_next) => { console.error(error); res.status(500).send(page({ eyebrow:'QR-V', title:'Platform error', lead:'The request could not be completed.' })); });
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`${SERVICE} ${VERSION} running on 0.0.0.0:${PORT}`);
-  if (NODE_ENV === 'production' && (!SESSION_SECRET || !ISSUER_ACCESS_CODE || !API_WRITE_KEY)) console.warn('Issuer Portal is fail-closed until SESSION_SECRET, ISSUER_ACCESS_CODE, and QRV_PLATFORM_API_KEY are configured.');
-});
+const server=process.env.NODE_ENV==="test"?null:app.listen(Number(process.env.PORT||3000),"0.0.0.0",()=>console.log(`QR-V platform ${VERSION} running`));
+export { app, contactCardFromForm, fetchJson, normalizeQrvid, normalizeVerificationState, qrColor, renderHomePage, renderShell, safeEqual, safeHttpsUrl, verificationResult };
+export default server;

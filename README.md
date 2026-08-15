@@ -1,133 +1,125 @@
-# QR-V™ Platform Node
+# QR-V™ Consolidated Platform Node
 
-`ohi-stack/qrv-node` is now the canonical public application for `qrv.network`.
+`qrv-node` is the browser-facing production application for the QR-V™ Global Verification Network.
 
-## Two-node production architecture
+The public UI now mirrors the established QR-V Sites design: official logo and favicon, sticky technical navigation, accessible desktop mega menus and mobile accordions, live-network and cryptographic-verification cues, product and service surfaces, institutional-trust messaging, and a back-to-top control. These presentation changes remain inside the existing two-node deployment boundary.
 
-```text
-qrv.network
-  Public platform node
-  ├── /verify
-  ├── /verify/:qrvid
-  ├── /issuer
-  ├── /issuer/dashboard
-  ├── /issuer/records
-  ├── /registry
-  ├── /explorer
-  ├── /docs
-  ├── /developers
-  ├── /api-reference
-  ├── /pricing
-  ├── /store
-  └── /status
-        │
-        ▼
-api.qrv.network
-  Canonical API + registry node
-        │
-        ▼
-PostgreSQL / Google Cloud SQL
-```
+See [`docs/SITE_DESIGN.md`](docs/SITE_DESIGN.md) for the production brand, navigation, topology, asset, and validation contract.
 
-The target deployment uses only two active public nodes:
+## Production Architecture
 
-1. `qrv.network` — all human-facing application routes.
-2. `api.qrv.network` — all machine-facing API, registry persistence, lifecycle mutation, and audit access.
-
-## Canonical verification URL
-
-New QR-V records should encode:
+QR-V is consolidated to two deployed application nodes:
 
 ```text
-https://qrv.network/verify/{QRVID}
+https://qrv.network      → all public and authenticated browser experiences
+https://api.qrv.network  → all versioned JSON/API operations
 ```
 
-QRVP-1 allows HTTPS gateway identifiers, so this keeps protocol behavior while reducing operational surface area.
+PostgreSQL remains the canonical registry datastore but is no longer exposed as a separate public application node.
 
-## Legacy subdomain compatibility
+## Canonical Platform Routes
 
-If legacy subdomains are pointed to this same Hostinger application, the platform issues permanent redirects:
+Verified Contact Cards add `/products/verified-contact-card`, public VCF and QR downloads, issuer create/edit workflows, and aggregate analytics without adding another production node. See [`docs/VERIFIED_CONTACT_CARD.md`](docs/VERIFIED_CONTACT_CARD.md).
 
 ```text
-verify.qrv.network      → qrv.network/verify
-issuer.qrv.network      → qrv.network/issuer
-registry.qrv.network    → qrv.network/registry
-explorer.qrv.network    → qrv.network/explorer
-docs.qrv.network        → qrv.network/docs
-developers.qrv.network  → qrv.network/developers
-status.qrv.network      → qrv.network/status
-store.qrv.network       → qrv.network/store
+/
+/verify
+/verify/:qrvid
+/issuer
+/issuer/login
+/issuer/dashboard
+/issuer/records
+/issuer/certificates
+/issuer/revocations
+/issuer/analytics
+/issuer/api-keys
+/issuer/billing
+/issuer/settings
+/registry
+/registry/:qrvid
+/explorer
+/docs
+/developers
+/protocol
+/how-it-works
+/use-cases
+/pricing
+/status
+/network
+/security
+/about
+/contact
+/terms
+/privacy
 ```
 
-This preserves older QR codes and bookmarks while making `qrv.network` canonical.
+## Service Boundary
 
-## Issuer Portal
+The platform node must never write directly to PostgreSQL. All issuance, registry, verification, revocation, audit, analytics, billing-entitlement, and integration operations are performed through `api.qrv.network`.
 
-`/issuer` is now part of the platform node. The initial consolidated portal provides:
+## Verification Flow
 
-- server-side issuer authentication;
-- issued-record listing;
-- record creation;
-- certificate issuance fields;
-- QRVID generation through the API;
-- SVG verification QR generation;
-- record detail;
-- revocation;
-- public verification handoff.
+```text
+QR scan
+→ https://qrv.network/verify/{qrvid}
+→ GET https://api.qrv.network/api/v1/verify/{qrvid}
+→ PostgreSQL registry lookup
+→ deterministic verification result
+→ public QR-V result page
+```
 
-Issuer access fails closed until these are configured:
+## Issuer Flow
+
+```text
+qrv.network/issuer
+→ authenticated issuer workflow
+→ api.qrv.network
+→ PostgreSQL registry
+→ QRVID + hash/signature + audit event
+→ qrv.network/verify/{qrvid}
+```
+
+## Environment
 
 ```env
-SESSION_SECRET=
-ISSUER_ACCESS_CODE=
-QRV_PLATFORM_API_KEY=
+NODE_ENV=production
+PORT=3000
+SERVICE_NAME=qrv-platform
+SERVICE_VERSION=2.3.0
+QRV_PUBLIC_BASE_URL=https://qrv.network
+QRV_API_BASE_URL=https://api.qrv.network/api/v1
+DEMO_QRVID=QRV-PROD-CERT-000001
+QRV_API_TIMEOUT_MS=7000
+QRV_WRITE_API_KEY=<server-side API key>
+QRV_ISSUER_ID=<issuer id>
+QRV_ISSUER_NAME=<issuer display name>
+ISSUER_PORTAL_USERNAME=<issuer administrator username>
+ISSUER_PORTAL_PASSWORD_SCRYPT=<salt:derived hex>
+ISSUER_SESSION_SECRET=<minimum 32-character secret>
+ISSUER_SESSION_TTL_SECONDS=28800
 ```
 
-## Security boundary
+Issuer secrets remain server-side. Login is disabled and readiness returns 503 until the complete issuer configuration is present. Sessions use signed, HTTP-only, same-site cookies; mutations require a session-bound CSRF token; API calls have a bounded timeout.
 
-The platform node must **not** receive `DATABASE_URL`.
-
-Database credentials belong only on `api.qrv.network`. The shared `QRV_PLATFORM_API_KEY` is server-to-server and must never be exposed to browser JavaScript.
-
-## Hostinger deployment
+## Hostinger
 
 ```text
 Repository: ohi-stack/qrv-node
-Branch: main
-Framework: Node / Express
+Branch: main after consolidation PR is approved
+Framework: Express
+Entry file: server.js
 Node: 20+
-Install: npm install
 Start: npm start
-Port: process.env.PORT
-Domain: qrv.network
 ```
 
-## Acceptance routes
+## Production Rule
 
-```text
-https://qrv.network/
-https://qrv.network/verify
-https://qrv.network/issuer
-https://qrv.network/registry
-https://qrv.network/docs
-https://qrv.network/developers
-https://qrv.network/api-reference
-https://qrv.network/pricing
-https://qrv.network/store
-https://qrv.network/status
-https://qrv.network/healthz
-https://qrv.network/readyz
-https://qrv.network/version
-```
+Production controls and commercial exclusions are recorded in:
 
-The production acceptance lifecycle is:
+- [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md)
+- [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
+- [`docs/COMMERCIAL_READINESS.md`](docs/COMMERCIAL_READINESS.md)
+- [`docs/BRAND_ASSETS.md`](docs/BRAND_ASSETS.md)
+- [`SECURITY.md`](SECURITY.md)
 
-```text
-issuer login
-→ issue record
-→ generate QRVID
-→ generate QR
-→ qrv.network/verify/{QRVID} = VERIFIED
-→ revoke record
-→ same URL = REVOKED
-```
+Do not create new public QR-V subdomains for ordinary product surfaces. Add browser features as `qrv.network/<route>` unless a separate network origin is required for a concrete security, protocol, scaling, or compliance reason.
