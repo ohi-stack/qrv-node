@@ -1,0 +1,5 @@
+* @ohi-stack
+/.github/ @ohi-stack
+/server.js @ohi-stack
+/public/ @ohi-stack
+/docs/ @ohi-stack

@@ -114,4 +114,12 @@ Start: npm start
 
 ## Production Rule
 
+Production controls and commercial exclusions are recorded in:
+
+- [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md)
+- [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
+- [`docs/COMMERCIAL_READINESS.md`](docs/COMMERCIAL_READINESS.md)
+- [`docs/BRAND_ASSETS.md`](docs/BRAND_ASSETS.md)
+- [`SECURITY.md`](SECURITY.md)
+
 Do not create new public QR-V subdomains for ordinary product surfaces. Add browser features as `qrv.network/<route>` unless a separate network origin is required for a concrete security, protocol, scaling, or compliance reason.

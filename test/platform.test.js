@@ -58,4 +58,14 @@ test('home page mirrors the production Sites surface and preserves the two-node 
   assert.match(html, /api\.qrv\.network/);
   assert.doesNotMatch(html, /verify\.qrv\.network/);
   assert.doesNotMatch(html, /registry\.qrv\.network/);
+  assert.match(html, /UNAVAILABLE/);
+  assert.doesNotMatch(html, /✓ VERIFIED/);
+});
+
+test('home page claims VERIFIED only when both integrity checks pass', () => {
+  const valid = renderHomePage({ verificationState: 'VERIFIED', issuer: 'Test Issuer', integrity: { hashValid: true, signatureValid: true }, apiReachable: true });
+  assert.match(valid, /✓ VERIFIED/);
+  const invalid = renderHomePage({ verificationState: 'VERIFIED', integrity: { hashValid: true, signatureValid: false }, apiReachable: true });
+  assert.doesNotMatch(invalid, /✓ VERIFIED/);
+  assert.match(invalid, /UNAVAILABLE/);
 });
