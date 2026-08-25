@@ -1,6 +1,6 @@
 # QR-V™ Platform Node
 
-`ohi-stack/qrv-node` is now the canonical public application for `qrv.network`.
+`ohi-stack/qrv-node` is the canonical public application for `qrv.network`.
 
 ## Two-node production architecture
 
@@ -19,7 +19,8 @@ qrv.network
   ├── /api-reference
   ├── /pricing
   ├── /store
-  └── /status
+  ├── /status
+  └── /admin   (private, authenticated)
         │
         ▼
 api.qrv.network
@@ -34,6 +35,36 @@ The target deployment uses only two active public nodes:
 1. `qrv.network` — all human-facing application routes.
 2. `api.qrv.network` — all machine-facing API, registry persistence, lifecycle mutation, and audit access.
 
+## 30-day commercial priority
+
+The platform is now in revenue validation, not architecture expansion.
+
+The flagship offer is the **QR-V™ Verified Certificate Pilot**.
+
+Primary user journey:
+
+```text
+Certificate landing page
+→ live verification demo
+→ Start Pilot / Book Demo
+→ payment or approved pilot
+→ issuer onboarding
+→ issuer creates production record
+→ QR-V code generated
+→ public verification
+→ lifecycle management / revocation
+```
+
+Primary operating target:
+
+```text
+100 qualified issuer prospects
+→ 10+ demos
+→ 5+ proposals
+→ 3–5 paying issuers
+→ 500+ production QR-V records
+```
+
 ## Canonical verification URL
 
 New QR-V records should encode:
@@ -43,6 +74,42 @@ https://qrv.network/verify/{QRVID}
 ```
 
 QRVP-1 allows HTTPS gateway identifiers, so this keeps protocol behavior while reducing operational surface area.
+
+## Public commercial routes
+
+The certificate-first sprint should prioritize:
+
+```text
+/certificates
+/demo
+/pricing
+/store
+/issuer
+/issuer/dashboard
+/issuer/records
+/verify/:qrvid
+```
+
+All relevant commercial pages should drive toward either **Start Pilot**, **Buy / Pay**, or **Book Demo**. Avoid adding speculative navigation during the 30-day sprint.
+
+## Admin route
+
+`/admin` is a private operator dashboard. It should surface:
+
+- paying issuers;
+- pilot issuers;
+- implementation revenue;
+- contracted MRR;
+- production records;
+- verifications;
+- revocations / expirations;
+- prospect → demo → proposal → paid pipeline;
+- issuer onboarding state;
+- Ed25519/signing readiness;
+- API/database health;
+- suspicious verification activity.
+
+The browser must never receive production database credentials, payment secrets, or unrestricted administrative API keys.
 
 ## Legacy subdomain compatibility
 
@@ -63,17 +130,20 @@ This preserves older QR codes and bookmarks while making `qrv.network` canonical
 
 ## Issuer Portal
 
-`/issuer` is now part of the platform node. The initial consolidated portal provides:
+`/issuer` is part of the platform node. The consolidated portal must provide:
 
 - server-side issuer authentication;
 - issued-record listing;
 - record creation;
 - certificate issuance fields;
+- expiration date support;
 - QRVID generation through the API;
 - SVG verification QR generation;
 - record detail;
 - revocation;
-- public verification handoff.
+- public verification handoff;
+- basic verification analytics;
+- billing / entitlement status.
 
 Issuer access fails closed until these are configured:
 
@@ -88,6 +158,22 @@ QRV_PLATFORM_API_KEY=
 The platform node must **not** receive `DATABASE_URL`.
 
 Database credentials belong only on `api.qrv.network`. The shared `QRV_PLATFORM_API_KEY` is server-to-server and must never be exposed to browser JavaScript.
+
+## Production signing gate
+
+SHA-256 integrity validation and Ed25519 issuer signing are separate states. Do not claim full issuer-signed QRVP-1 verification until Ed25519 key management, record signing, signature persistence, and verification are operational end-to-end.
+
+## Deferred until customer validation
+
+Do not make commercial v1 dependent on:
+
+- mobile scanner app;
+- wallet;
+- blockchain registry migration;
+- federated issuer nodes;
+- multi-region replication;
+- separate explorer/docs/developer deployments;
+- speculative new record verticals.
 
 ## Hostinger deployment
 
@@ -120,14 +206,16 @@ https://qrv.network/readyz
 https://qrv.network/version
 ```
 
-The production acceptance lifecycle is:
+## Commercial Definition of Done
+
+The v1 lifecycle is complete only when a real approved external issuer can:
 
 ```text
-issuer login
-→ issue record
-→ generate QRVID
-→ generate QR
+be onboarded / entitled
+→ issue a production record
+→ generate QRVID + QR
 → qrv.network/verify/{QRVID} = VERIFIED
-→ revoke record
+→ revoke the record
 → same URL = REVOKED
+→ operator sees issuance, verification, revenue, and audit state in /admin
 ```
