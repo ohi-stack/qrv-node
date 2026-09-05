@@ -2,11 +2,14 @@
 
 `ohi-stack/qrv-node` is the canonical public application for `qrv.network`.
 
-## Two-node production architecture
+## QR-V Production Architecture v1.0
+
+QR-V now uses a strict two-node production model:
 
 ```text
 qrv.network
-  Public platform node
+  Public platform/application layer
+  ├── /
   ├── /verify
   ├── /verify/:qrvid
   ├── /issuer
@@ -20,42 +23,124 @@ qrv.network
   ├── /pricing
   ├── /store
   ├── /status
+  ├── /security
   └── /admin   (private, authenticated)
         │
         ▼
 api.qrv.network
-  Canonical API + registry node
+  Private backend/data/API layer
         │
         ▼
 PostgreSQL / Google Cloud SQL
 ```
 
-The target deployment uses only two active public nodes:
+The active production runtime target is only:
 
-1. `qrv.network` — all human-facing application routes.
-2. `api.qrv.network` — all machine-facing API, registry persistence, lifecycle mutation, and audit access.
+1. `qrv.network` — all human-facing routes, issuer workflows, public verification UX, docs, explorer, pricing, and authenticated platform sessions.
+2. `api.qrv.network` — all machine-facing API, persistence, lifecycle mutation, cryptographic operations, audit access, rate limiting, and privileged backend logic.
 
-## 30-day commercial priority
+All legacy public service hostnames are compatibility aliases only.
 
-The platform is now in revenue validation, not architecture expansion.
+## Security boundary
 
-The flagship offer is the **QR-V™ Verified Certificate Pilot**.
+`qrv.network` must **never** receive production database credentials, Supabase secret/server keys, unrestricted admin credentials, payment-provider secrets, or signing private keys.
 
-Primary user journey:
+The platform node may receive only the application/session variables it needs to securely call the API node:
 
-```text
-Certificate landing page
-→ live verification demo
-→ Start Pilot / Book Demo
-→ payment or approved pilot
-→ issuer onboarding
-→ issuer creates production record
-→ QR-V code generated
-→ public verification
-→ lifecycle management / revocation
+```env
+NODE_ENV=production
+PORT=3000
+APP_VERSION=1.0.0
+QRV_PLATFORM_ORIGIN=https://qrv.network
+QRV_API_BASE_URL=https://api.qrv.network/api/v1
+QRV_PLATFORM_API_KEY=
+SESSION_SECRET=
+ISSUER_ACCESS_CODE=
+SESSION_TTL_MS=43200000
 ```
 
-Primary operating target:
+`QRV_PLATFORM_API_KEY` is server-to-server only and must never be exposed to browser JavaScript.
+
+## Canonical public URLs
+
+```text
+APP              https://qrv.network
+VERIFY           https://qrv.network/verify
+REGISTRY UI      https://qrv.network/registry
+ISSUER           https://qrv.network/issuer
+DOCS             https://qrv.network/docs
+DEVELOPERS       https://qrv.network/developers
+STATUS           https://qrv.network/status
+API              https://api.qrv.network/api/v1
+```
+
+New QR-V records must encode:
+
+```text
+https://qrv.network/verify/{QRVID}
+```
+
+QRVP-1 permits HTTPS gateway identifiers, so this preserves the protocol flow while reducing operational surface area.
+
+## Legacy compatibility
+
+If legacy subdomains remain mapped, they must operate only as permanent HTTP 308 compatibility redirects:
+
+```text
+verify.qrv.network      → qrv.network/verify
+issuer.qrv.network      → qrv.network/issuer
+registry.qrv.network    → qrv.network/registry
+explorer.qrv.network    → qrv.network/explorer
+docs.qrv.network        → qrv.network/docs
+developers.qrv.network  → qrv.network/developers
+status.qrv.network      → qrv.network/status
+store.qrv.network       → qrv.network/store
+```
+
+This preserves older printed QR codes and bookmarks without keeping duplicate production applications alive.
+
+## Product focus
+
+The platform is in activation and revenue validation, not architecture expansion.
+
+The flagship commercial offer is the **QR-V™ Verified Certificate Pilot**.
+
+Primary lifecycle:
+
+```text
+approved issuer
+→ issue certificate record
+→ API persists canonical registry data
+→ QRVID generated
+→ QR generated
+→ qrv.network/verify/{QRVID}
+→ VERIFIED / EXPIRED / REVOKED / NOT_FOUND
+→ audit + operator visibility
+```
+
+The Issuer Portal must support:
+
+- server-side issuer authentication;
+- issued-record listing;
+- certificate issuance;
+- expiration dates;
+- QRVID generation through the API;
+- SVG QR generation;
+- record detail;
+- revocation;
+- public verification handoff;
+- basic verification analytics;
+- billing / entitlement state.
+
+Issuer access fails closed until these are configured:
+
+```env
+SESSION_SECRET=
+ISSUER_ACCESS_CODE=
+QRV_PLATFORM_API_KEY=
+```
+
+## 30-day commercial priority
 
 ```text
 100 qualified issuer prospects
@@ -65,32 +150,7 @@ Primary operating target:
 → 500+ production QR-V records
 ```
 
-## Canonical verification URL
-
-New QR-V records should encode:
-
-```text
-https://qrv.network/verify/{QRVID}
-```
-
-QRVP-1 allows HTTPS gateway identifiers, so this keeps protocol behavior while reducing operational surface area.
-
-## Public commercial routes
-
-The certificate-first sprint should prioritize:
-
-```text
-/certificates
-/demo
-/pricing
-/store
-/issuer
-/issuer/dashboard
-/issuer/records
-/verify/:qrvid
-```
-
-All relevant commercial pages should drive toward either **Start Pilot**, **Buy / Pay**, or **Book Demo**. Avoid adding speculative navigation during the 30-day sprint.
+All relevant public pages should drive toward **Start Pilot**, **Buy / Pay**, or **Book Demo**.
 
 ## Admin route
 
@@ -111,57 +171,11 @@ All relevant commercial pages should drive toward either **Start Pilot**, **Buy 
 
 The browser must never receive production database credentials, payment secrets, or unrestricted administrative API keys.
 
-## Legacy subdomain compatibility
-
-If legacy subdomains are pointed to this same Hostinger application, the platform issues permanent redirects:
-
-```text
-verify.qrv.network      → qrv.network/verify
-issuer.qrv.network      → qrv.network/issuer
-registry.qrv.network    → qrv.network/registry
-explorer.qrv.network    → qrv.network/explorer
-docs.qrv.network        → qrv.network/docs
-developers.qrv.network  → qrv.network/developers
-status.qrv.network      → qrv.network/status
-store.qrv.network       → qrv.network/store
-```
-
-This preserves older QR codes and bookmarks while making `qrv.network` canonical.
-
-## Issuer Portal
-
-`/issuer` is part of the platform node. The consolidated portal must provide:
-
-- server-side issuer authentication;
-- issued-record listing;
-- record creation;
-- certificate issuance fields;
-- expiration date support;
-- QRVID generation through the API;
-- SVG verification QR generation;
-- record detail;
-- revocation;
-- public verification handoff;
-- basic verification analytics;
-- billing / entitlement status.
-
-Issuer access fails closed until these are configured:
-
-```env
-SESSION_SECRET=
-ISSUER_ACCESS_CODE=
-QRV_PLATFORM_API_KEY=
-```
-
-## Security boundary
-
-The platform node must **not** receive `DATABASE_URL`.
-
-Database credentials belong only on `api.qrv.network`. The shared `QRV_PLATFORM_API_KEY` is server-to-server and must never be exposed to browser JavaScript.
-
 ## Production signing gate
 
-SHA-256 integrity validation and Ed25519 issuer signing are separate states. Do not claim full issuer-signed QRVP-1 verification until Ed25519 key management, record signing, signature persistence, and verification are operational end-to-end.
+SHA-256 integrity validation and Ed25519 issuer signing are separate operational states.
+
+Do not claim full issuer-signed QRVP-1 verification until Ed25519 key management, record signing, signature persistence, public-key verification, key rotation, and fail-closed invalid-signature handling are operational end-to-end.
 
 ## Deferred until customer validation
 
@@ -208,14 +222,14 @@ https://qrv.network/version
 
 ## Commercial Definition of Done
 
-The v1 lifecycle is complete only when a real approved external issuer can:
+QR-V Production Architecture v1.0 is commercially complete only when a real approved external issuer can:
 
 ```text
 be onboarded / entitled
 → issue a production record
 → generate QRVID + QR
 → qrv.network/verify/{QRVID} = VERIFIED
-→ revoke the record
-→ same URL = REVOKED
-→ operator sees issuance, verification, revenue, and audit state in /admin
+→ expire or revoke the record
+→ same public URL returns EXPIRED or REVOKED deterministically
+→ operator sees issuance, verification, revenue, security, and audit state in /admin
 ```
