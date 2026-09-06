@@ -1,17 +1,31 @@
 {
   "name": "qrv-node",
-  "version": "1.1.1",
-  "description": "Canonical QR-V public production platform for qrv.network with verification, issuer lifecycle, registry UI, docs, status and legacy API compatibility gateway.",
+  "version": "2.0.0",
+  "description": "Canonical QR-V public platform: React/Vite browser application served by an Express production boundary for qrv.network.",
   "type": "module",
   "main": "server.js",
   "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "dev:server": "node --watch server.js",
+    "build": "vite build",
     "start": "node server.js",
-    "dev": "node --watch server.js",
-    "check": "node --check server.js && node --check scripts/live-acceptance.mjs",
+    "check": "node --check server.js && node --check scripts/live-acceptance.mjs && vite build",
     "smoke": "node -e \"const base=process.env.QRV_NODE_URL||'http://127.0.0.1:3000'; Promise.all(['/healthz','/readyz','/version'].map(p=>fetch(base+p).then(async r=>({status:r.status,body:await r.json()})))).then(console.log)\"",
     "acceptance:live": "node scripts/live-acceptance.mjs",
     "validate:prod": "npm run check"
   },
   "engines": {"node": ">=20"},
-  "dependencies": {"express": "^4.21.2","express-rate-limit": "^7.5.1","helmet": "^8.1.0","qrcode": "^1.5.4"}
+  "dependencies": {
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.1.0",
+    "lucide-react": "^0.468.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.1.0"
+  }
 }
