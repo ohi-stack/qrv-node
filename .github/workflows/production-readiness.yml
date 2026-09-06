@@ -1,0 +1,62 @@
+name: QR-V Platform Production Readiness
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-platform-node:
+    name: Validate qrv.network platform node
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Static checks
+        run: npm run check
+
+      - name: Start platform node
+        run: |
+          NODE_ENV=production \
+          PORT=3000 \
+          APP_VERSION=ci \
+          QRV_PLATFORM_ORIGIN=http://127.0.0.1:3000 \
+          QRV_API_BASE_URL=http://127.0.0.1:3999/api/v1 \
+          SESSION_SECRET=ci-session-secret \
+          ISSUER_ACCESS_CODE=ci-access-code \
+          npm start > /tmp/qrv-node.log 2>&1 &
+          echo $! > /tmp/qrv-node.pid
+          sleep 3
+
+      - name: Validate required local routes
+        run: |
+          set -euo pipefail
+          for path in / /healthz /readyz /version /verify /issuer /registry /docs /developers /pricing /status /security /about; do
+            code=$(curl -sS -o /tmp/response.txt -w '%{http_code}' "http://127.0.0.1:3000${path}")
+            echo "$path -> $code"
+            test "$code" -ge 200
+            test "$code" -lt 400
+          done
+
+      - name: Stop platform node
+        if: always()
+        run: |
+          if [ -f /tmp/qrv-node.pid ]; then kill $(cat /tmp/qrv-node.pid) || true; fi
+          cat /tmp/qrv-node.log || true
