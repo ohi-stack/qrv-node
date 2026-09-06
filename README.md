@@ -4,12 +4,12 @@
 
 ## QR-V Production Architecture v1.0
 
-QR-V now uses a strict two-node production model:
+QR-V uses a strict two-node production model:
 
 ```text
 qrv.network
   Public platform/application layer
-  ├── /
+  ├── customer-facing React/Vite frontend
   ├── /verify
   ├── /verify/:qrvid
   ├── /issuer
@@ -31,15 +31,130 @@ api.qrv.network
   Private backend/data/API layer
         │
         ▼
-PostgreSQL / Google Cloud SQL
+Canonical PostgreSQL registry
 ```
 
 The active production runtime target is only:
 
-1. `qrv.network` — all human-facing routes, issuer workflows, public verification UX, docs, explorer, pricing, and authenticated platform sessions.
+1. `qrv.network` — all human-facing routes, issuer workflows, public verification UX, docs, explorer, pricing, customer-facing frontend, and authenticated platform sessions.
 2. `api.qrv.network` — all machine-facing API, persistence, lifecycle mutation, cryptographic operations, audit access, rate limiting, and privileged backend logic.
 
 All legacy public service hostnames are compatibility aliases only.
+
+## Sites frontend consolidation
+
+The QR-V Sites/customer-facing visual system is now being consolidated directly into this repository.
+
+Canonical frontend source:
+
+```text
+src/web/
+├── App.jsx
+├── main.jsx
+├── config.js
+└── styles.css
+```
+
+Build output:
+
+```text
+dist/web/
+```
+
+The production server keeps authority over operational and trusted routes while serving the built React frontend for customer-facing routes.
+
+### Server-controlled routes
+
+```text
+/verify
+/verify/:qrvid
+/registry
+/registry/:qrvid
+/issuer
+/issuer/*
+/status
+/api-reference
+/api/v1/*
+/healthz
+/readyz
+/version
+/qr/:qrvid.svg
+```
+
+### Customer-facing frontend routes
+
+The React/Vite frontend is used for the public product, education, commercial, and discovery experience, including:
+
+```text
+/
+/protocol
+/how-it-works
+/use-cases
+/pricing
+/developers
+/about
+/standards
+/security
+/enterprise
+/certificate-verification
+/docs
+/network
+/store
+/billing
+/wallet
+```
+
+If `dist/web` is absent, `qrv-node` retains its server-rendered fallback rather than crashing the platform.
+
+## Migration-source repository
+
+`ohi-stack/qrv-marketing-site` remains a migration/reference source until frontend, SEO, content, and Sites-origin parity is validated.
+
+It is not the production runtime for `qrv.network`.
+
+Do not archive or delete that repository until the consolidation Definition of Done is satisfied.
+
+## Build and validation
+
+```bash
+npm install
+npm run build
+npm run check
+npm start
+```
+
+Production validation must confirm:
+
+```text
+/healthz                 → 200 JSON and frontend=sites-react when build exists
+/readyz                  → 200 only when api.qrv.network is ready
+/                        → customer-facing Sites frontend
+/protocol                → customer-facing Sites frontend
+/pricing                 → customer-facing Sites frontend
+/verify                  → operational verifier
+/issuer                  → operational issuer access
+/registry                → operational registry lookup
+/api/v1/*                → compatibility proxy only
+```
+
+After deployment run:
+
+```bash
+npm run acceptance:live
+```
+
+The final regression gate remains:
+
+```text
+issuer login
+→ create production record
+→ QRVID generated
+→ QR generated
+→ qrv.network/verify/{QRVID} = VERIFIED
+→ revoke record
+→ same URL = REVOKED
+→ audit state preserved
+```
 
 ## Security boundary
 
@@ -50,7 +165,7 @@ The platform node may receive only the application/session variables it needs to
 ```env
 NODE_ENV=production
 PORT=3000
-APP_VERSION=1.0.0
+APP_VERSION=1.1.1
 QRV_PLATFORM_ORIGIN=https://qrv.network
 QRV_API_BASE_URL=https://api.qrv.network/api/v1
 QRV_PLATFORM_API_KEY=
@@ -118,106 +233,18 @@ approved issuer
 → audit + operator visibility
 ```
 
-The Issuer Portal must support:
-
-- server-side issuer authentication;
-- issued-record listing;
-- certificate issuance;
-- expiration dates;
-- QRVID generation through the API;
-- SVG QR generation;
-- record detail;
-- revocation;
-- public verification handoff;
-- basic verification analytics;
-- billing / entitlement state.
-
-Issuer access fails closed until these are configured:
-
-```env
-SESSION_SECRET=
-ISSUER_ACCESS_CODE=
-QRV_PLATFORM_API_KEY=
-```
-
-## 30-day commercial priority
-
-```text
-100 qualified issuer prospects
-→ 10+ demos
-→ 5+ proposals
-→ 3–5 paying issuers
-→ 500+ production QR-V records
-```
-
-All relevant public pages should drive toward **Start Pilot**, **Buy / Pay**, or **Book Demo**.
-
-## Admin route
-
-`/admin` is a private operator dashboard. It should surface:
-
-- paying issuers;
-- pilot issuers;
-- implementation revenue;
-- contracted MRR;
-- production records;
-- verifications;
-- revocations / expirations;
-- prospect → demo → proposal → paid pipeline;
-- issuer onboarding state;
-- Ed25519/signing readiness;
-- API/database health;
-- suspicious verification activity.
-
-The browser must never receive production database credentials, payment secrets, or unrestricted administrative API keys.
-
-## Production signing gate
-
-SHA-256 integrity validation and Ed25519 issuer signing are separate operational states.
-
-Do not claim full issuer-signed QRVP-1 verification until Ed25519 key management, record signing, signature persistence, public-key verification, key rotation, and fail-closed invalid-signature handling are operational end-to-end.
-
-## Deferred until customer validation
-
-Do not make commercial v1 dependent on:
-
-- mobile scanner app;
-- wallet;
-- blockchain registry migration;
-- federated issuer nodes;
-- multi-region replication;
-- separate explorer/docs/developer deployments;
-- speculative new record verticals.
-
 ## Hostinger deployment
 
 ```text
 Repository: ohi-stack/qrv-node
-Branch: main
+Branch: main (after consolidation PR is approved and merged)
 Framework: Node / Express
 Node: 20+
 Install: npm install
+Build: npm run build
 Start: npm start
 Port: process.env.PORT
 Domain: qrv.network
-```
-
-## Acceptance routes
-
-```text
-https://qrv.network/
-https://qrv.network/verify
-https://qrv.network/issuer
-https://qrv.network/registry
-https://qrv.network/docs
-https://qrv.network/developers
-https://qrv.network/api-reference
-https://qrv.network/pricing
-https://qrv.network/store
-https://qrv.network/status
-https://qrv.network/healthz
-https://qrv.network/readyz
-https://qrv.network/version
 ```
 
 ## Commercial Definition of Done
