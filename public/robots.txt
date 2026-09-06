@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+Disallow: /issuer/dashboard
+Disallow: /issuer/records
+Disallow: /issuer/api-keys
+Disallow: /admin
+Disallow: /billing
+
+Sitemap: https://qrv.network/sitemap.xml
