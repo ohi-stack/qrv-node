@@ -1,0 +1,51 @@
+{
+  "site": "qrv-global-verification",
+  "network": "QR-V Global Verification Network",
+  "publicDomain": "https://qrv.network",
+  "destinationRepository": "ohi-stack/qrv-marketing-site",
+  "sourceType": "ChatGPT Sites",
+  "syncPolicy": "site-source-to-github",
+  "siteSourceRoot": "sites/qrv-global-verification",
+  "canonicalPublicRoutes": [
+    "/",
+    "/protocol",
+    "/how-it-works",
+    "/verification",
+    "/registry",
+    "/issuers",
+    "/use-cases",
+    "/pricing",
+    "/developers",
+    "/docs",
+    "/status",
+    "/store",
+    "/network",
+    "/about",
+    "/support"
+  ],
+  "requiredSiteElements": [
+    "responsive header",
+    "mega menu",
+    "mobile navigation",
+    "light and dark logo variants",
+    "hero animation",
+    "QR-V network visual representation",
+    "verification CTA",
+    "issuer CTA",
+    "four-column footer",
+    "responsive page sections"
+  ],
+  "runtimeBoundaries": {
+    "publicSiteSource": "ohi-stack/qrv-marketing-site",
+    "platformRuntime": "ohi-stack/qrv-node",
+    "apiAndRegistry": "ohi-stack/qrv-api"
+  },
+  "rules": [
+    "Do not maintain a second independent copy of the QR-V public website in another repository.",
+    "When Sites source is exported, preserve the exported file names and asset paths where practical.",
+    "Mobile and desktop must render from the same source revision.",
+    "Protected API credentials and registry secrets must never be committed with site files.",
+    "Public verification behavior remains deterministic under QRVP-1 and QVS-1.0."
+  ],
+  "lastUpdated": "2026-08-15T14:48:00Z"
+}
