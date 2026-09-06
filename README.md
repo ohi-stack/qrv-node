@@ -2,55 +2,129 @@
 
 `ohi-stack/qrv-node` is the canonical public application for `qrv.network`.
 
-## QR-V Production Architecture v1.0
+## Runtime architecture
 
-QR-V now uses a strict two-node production model:
+QR-V uses a strict two-node production model:
 
 ```text
 qrv.network
-  Public platform/application layer
-  ├── /
-  ├── /verify
-  ├── /verify/:qrvid
-  ├── /issuer
-  ├── /issuer/dashboard
-  ├── /issuer/records
-  ├── /registry
-  ├── /explorer
-  ├── /docs
-  ├── /developers
-  ├── /api-reference
-  ├── /pricing
-  ├── /store
-  ├── /status
-  ├── /security
-  └── /admin   (private, authenticated)
+  React + Vite browser application
+  served by an Express production boundary
+  ├── public verification UI
+  ├── issuer workspace
+  ├── registry/explorer UI
+  ├── docs/developers/pricing/status
+  └── compatibility gateway
         │
         ▼
 api.qrv.network
-  Private backend/data/API layer
+  Trusted API / data / cryptographic authority
         │
         ▼
-PostgreSQL / Google Cloud SQL
+Canonical PostgreSQL registry
 ```
 
-The active production runtime target is only:
+QRVP-1 and QVS-1.0 remain the protocol/standard authority. The React conversion changes presentation/runtime structure only; verification truth still comes from `api.qrv.network` and the canonical registry.
 
-1. `qrv.network` — all human-facing routes, issuer workflows, public verification UX, docs, explorer, pricing, and authenticated platform sessions.
-2. `api.qrv.network` — all machine-facing API, persistence, lifecycle mutation, cryptographic operations, audit access, rate limiting, and privileged backend logic.
+## Frontend
 
-All legacy public service hostnames are compatibility aliases only.
+The browser application is built with:
 
-## Security boundary
+- React 19
+- Vite 6
+- Lucide React
+- responsive QR-V navy/gold/cyan design system
 
-`qrv.network` must **never** receive production database credentials, Supabase secret/server keys, unrestricted admin credentials, payment-provider secrets, or signing private keys.
+Entry files:
 
-The platform node may receive only the application/session variables it needs to securely call the API node:
+```text
+index.html
+vite.config.js
+src/main.jsx
+src/App.jsx
+src/config.js
+src/styles.css
+```
+
+The Vite build outputs to:
+
+```text
+dist/
+```
+
+## Express production boundary
+
+`server.js` does not render marketing pages. It owns only server-side responsibilities:
+
+- serves the Vite `dist/` bundle
+- `/platform/verify/:qrvid`
+- `/platform/registry/:qrvid`
+- issuer session/login/logout
+- issuer record creation/read/revocation
+- QR SVG generation
+- `/api/v1/*` compatibility proxy
+- `/healthz`, `/readyz`, `/version`
+- robots/sitemap
+- legacy-host redirects
+- rate limiting and security headers
+
+Browser code never receives:
+
+```text
+DATABASE_URL
+SUPABASE_SECRET_KEY
+QRV_PLATFORM_API_KEY
+SESSION_SECRET
+ISSUER_ACCESS_CODE
+private signing keys
+webhook secrets
+```
+
+## Development
+
+Run the platform server and Vite development server separately:
+
+```bash
+npm install
+npm run dev:server
+```
+
+Then in a second terminal:
+
+```bash
+npm run dev
+```
+
+Vite runs on `http://127.0.0.1:5173` and proxies `/platform`, `/qr`, `/healthz`, `/readyz`, and `/version` to the Express server on port 3000.
+
+## Production build
+
+```bash
+npm install
+npm run build
+npm start
+```
+
+`npm start` expects `dist/index.html` to exist. If the React/Vite bundle has not been built, browser routes fail closed with `UI_NOT_BUILT`.
+
+## Validation
+
+```bash
+npm run check
+npm run smoke
+npm run acceptance:live
+```
+
+`npm run check` validates the server and acceptance script and performs a production Vite build.
+
+## Production environment
+
+Server-side:
 
 ```env
 NODE_ENV=production
 PORT=3000
-APP_VERSION=1.0.0
+APP_VERSION=2.0.0
 QRV_PLATFORM_ORIGIN=https://qrv.network
 QRV_API_BASE_URL=https://api.qrv.network/api/v1
 QRV_PLATFORM_API_KEY=
@@ -59,32 +133,51 @@ ISSUER_ACCESS_CODE=
 SESSION_TTL_MS=43200000
 ```
 
-`QRV_PLATFORM_API_KEY` is server-to-server only and must never be exposed to browser JavaScript.
+Browser-safe Vite build values:
+
+```env
+VITE_APP_BASE_URL=https://qrv.network
+VITE_QRV_VERIFY_BASE_URL=https://qrv.network/verify
+VITE_QRV_ISSUER_BASE_URL=https://qrv.network/issuer
+VITE_QRV_REGISTRY_BASE_URL=https://qrv.network/registry
+VITE_QRV_DOCS_BASE_URL=https://qrv.network/docs
+VITE_QRV_DEVELOPERS_BASE_URL=https://qrv.network/developers
+VITE_QRV_STATUS_BASE_URL=https://qrv.network/status
+VITE_QRV_API_BASE_URL=https://api.qrv.network/api/v1
+VITE_QRV_DEMO_QRVID=QRV-PROD-CERT-000001
+```
+
+Only public URLs and non-secret identifiers may use the `VITE_` prefix.
 
 ## Canonical public URLs
 
 ```text
-APP              https://qrv.network
-VERIFY           https://qrv.network/verify
-REGISTRY UI      https://qrv.network/registry
-ISSUER           https://qrv.network/issuer
-DOCS             https://qrv.network/docs
-DEVELOPERS       https://qrv.network/developers
-STATUS           https://qrv.network/status
-API              https://api.qrv.network/api/v1
+https://qrv.network/
+https://qrv.network/verify
+https://qrv.network/verify/{QRVID}
+https://qrv.network/issuer
+https://qrv.network/issuer/dashboard
+https://qrv.network/issuer/records
+https://qrv.network/registry
+https://qrv.network/explorer
+https://qrv.network/docs
+https://qrv.network/developers
+https://qrv.network/api-reference
+https://qrv.network/pricing
+https://qrv.network/status
+https://qrv.network/security
+https://qrv.network/about
 ```
 
-New QR-V records must encode:
+New QR-V codes encode:
 
 ```text
 https://qrv.network/verify/{QRVID}
 ```
 
-QRVP-1 permits HTTPS gateway identifiers, so this preserves the protocol flow while reducing operational surface area.
-
 ## Legacy compatibility
 
-If legacy subdomains remain mapped, they must operate only as permanent HTTP 308 compatibility redirects:
+Legacy service hostnames may remain mapped only as permanent HTTP 308 compatibility redirects:
 
 ```text
 verify.qrv.network      → qrv.network/verify
@@ -94,142 +187,19 @@ explorer.qrv.network    → qrv.network/explorer
 docs.qrv.network        → qrv.network/docs
 developers.qrv.network  → qrv.network/developers
 status.qrv.network      → qrv.network/status
-store.qrv.network       → qrv.network/store
 ```
-
-This preserves older printed QR codes and bookmarks without keeping duplicate production applications alive.
 
 ## Product focus
 
-The platform is in activation and revenue validation, not architecture expansion.
-
-The flagship commercial offer is the **QR-V™ Verified Certificate Pilot**.
-
-Primary lifecycle:
+The first commercial lifecycle remains QR-V™ Verified Certificates:
 
 ```text
-approved issuer
-→ issue certificate record
-→ API persists canonical registry data
-→ QRVID generated
-→ QR generated
+authorized issuer
+→ create registry record
+→ generate QRVID
+→ generate QR
 → qrv.network/verify/{QRVID}
-→ VERIFIED / EXPIRED / REVOKED / NOT_FOUND
-→ audit + operator visibility
+→ VERIFIED / REVOKED / EXPIRED / NOT_FOUND
 ```
 
-The Issuer Portal must support:
-
-- server-side issuer authentication;
-- issued-record listing;
-- certificate issuance;
-- expiration dates;
-- QRVID generation through the API;
-- SVG QR generation;
-- record detail;
-- revocation;
-- public verification handoff;
-- basic verification analytics;
-- billing / entitlement state.
-
-Issuer access fails closed until these are configured:
-
-```env
-SESSION_SECRET=
-ISSUER_ACCESS_CODE=
-QRV_PLATFORM_API_KEY=
-```
-
-## 30-day commercial priority
-
-```text
-100 qualified issuer prospects
-→ 10+ demos
-→ 5+ proposals
-→ 3–5 paying issuers
-→ 500+ production QR-V records
-```
-
-All relevant public pages should drive toward **Start Pilot**, **Buy / Pay**, or **Book Demo**.
-
-## Admin route
-
-`/admin` is a private operator dashboard. It should surface:
-
-- paying issuers;
-- pilot issuers;
-- implementation revenue;
-- contracted MRR;
-- production records;
-- verifications;
-- revocations / expirations;
-- prospect → demo → proposal → paid pipeline;
-- issuer onboarding state;
-- Ed25519/signing readiness;
-- API/database health;
-- suspicious verification activity.
-
-The browser must never receive production database credentials, payment secrets, or unrestricted administrative API keys.
-
-## Production signing gate
-
-SHA-256 integrity validation and Ed25519 issuer signing are separate operational states.
-
-Do not claim full issuer-signed QRVP-1 verification until Ed25519 key management, record signing, signature persistence, public-key verification, key rotation, and fail-closed invalid-signature handling are operational end-to-end.
-
-## Deferred until customer validation
-
-Do not make commercial v1 dependent on:
-
-- mobile scanner app;
-- wallet;
-- blockchain registry migration;
-- federated issuer nodes;
-- multi-region replication;
-- separate explorer/docs/developer deployments;
-- speculative new record verticals.
-
-## Hostinger deployment
-
-```text
-Repository: ohi-stack/qrv-node
-Branch: main
-Framework: Node / Express
-Node: 20+
-Install: npm install
-Start: npm start
-Port: process.env.PORT
-Domain: qrv.network
-```
-
-## Acceptance routes
-
-```text
-https://qrv.network/
-https://qrv.network/verify
-https://qrv.network/issuer
-https://qrv.network/registry
-https://qrv.network/docs
-https://qrv.network/developers
-https://qrv.network/api-reference
-https://qrv.network/pricing
-https://qrv.network/store
-https://qrv.network/status
-https://qrv.network/healthz
-https://qrv.network/readyz
-https://qrv.network/version
-```
-
-## Commercial Definition of Done
-
-QR-V Production Architecture v1.0 is commercially complete only when a real approved external issuer can:
-
-```text
-be onboarded / entitled
-→ issue a production record
-→ generate QRVID + QR
-→ qrv.network/verify/{QRVID} = VERIFIED
-→ expire or revoke the record
-→ same public URL returns EXPIRED or REVOKED deterministically
-→ operator sees issuance, verification, revenue, security, and audit state in /admin
-```
+The browser is presentation. The API and registry remain the authority.
