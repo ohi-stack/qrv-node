@@ -1,0 +1,56 @@
+{
+  "site": "qrv-global-verification",
+  "network": "QR-V Global Verification Network",
+  "publicDomain": "https://qrv.network",
+  "canonicalRepository": "ohi-stack/qrv-node",
+  "sourceRepositoryHistory": [
+    "ohi-stack/qrv-marketing-site"
+  ],
+  "sourceType": "ChatGPT Sites + controlled React/Vite migration",
+  "siteSourceRoot": "web",
+  "canonicalPublicRoutes": [
+    "/",
+    "/protocol",
+    "/how-it-works",
+    "/standards",
+    "/verify",
+    "/registry",
+    "/issuer",
+    "/use-cases",
+    "/pricing",
+    "/developers",
+    "/docs",
+    "/api-reference",
+    "/status",
+    "/network",
+    "/security",
+    "/enterprise",
+    "/certificate-verification",
+    "/about"
+  ],
+  "requiredSiteElements": [
+    "responsive header",
+    "mobile navigation",
+    "verification-focused hero",
+    "QR-V network visual language",
+    "verification CTA",
+    "issuer CTA",
+    "protocol and registry navigation",
+    "developer and pricing pathways",
+    "responsive page sections"
+  ],
+  "runtimeBoundaries": {
+    "publicSiteSource": "ohi-stack/qrv-node/web",
+    "platformRuntime": "ohi-stack/qrv-node/server.js",
+    "apiAndRegistry": "ohi-stack/qrv-api"
+  },
+  "rules": [
+    "Do not maintain a second independent production copy of the QR-V public website.",
+    "Preserve qrv-node verification, issuer, security, health, readiness, CI, and live acceptance behavior during frontend changes.",
+    "Mobile and desktop must render from the same frontend source revision.",
+    "Protected API credentials and registry secrets must never be committed with site files or exposed through VITE_ variables.",
+    "Public verification behavior remains deterministic under QRVP-1 and QVS-1.0.",
+    "The public UI must not assert VERIFIED unless the canonical API returns the authoritative state."
+  ],
+  "migrationDate": "2026-09-06"
+}
