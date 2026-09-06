@@ -1,0 +1,8 @@
+{
+  "name": "QR-V Platform",
+  "description": "Canonical QR-V public platform for verification, issuer lifecycle, registry UI, docs, and network status.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
