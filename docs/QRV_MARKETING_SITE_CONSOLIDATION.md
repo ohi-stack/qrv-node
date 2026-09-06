@@ -1,7 +1,7 @@
 # QR-V™ Marketing Site → qrv-node Consolidation
 
 Status: In progress
-Canonical runtime repository: `ohi-stack/qrv-node`
+Canonical public-platform repository: `ohi-stack/qrv-node`
 Migration source: `ohi-stack/qrv-marketing-site`
 Target public origin: `https://qrv.network`
 
@@ -17,7 +17,12 @@ This migration brings the QR-V Sites visual system and customer-facing React fro
 - Sites-derived visual system under `src/web/styles.css`
 - Consolidated public configuration under `src/web/config.js`
 - React, Vite and Lucide dependencies in `package.json`
-- `npm run build` now produces the frontend `dist/` bundle after production checks
+- `npm run build` produces the frontend `dist/` bundle after production checks
+- commercialization baseline preserved under `docs/COMMERCIALIZATION_BASELINE.md`
+- production content strategy migrated under `docs/CONTENT_STRATEGY.md`
+- SEO assets migrated under `public/`
+- Sites source provenance preserved under `sites/qrv-global-verification/`
+- production-readiness workflow now validates the Vite bundle and no longer assumes an npm lockfile exists
 
 ## Preserved production authority
 
@@ -36,7 +41,7 @@ The following remain authoritative in `qrv-node` and must not be overwritten by 
 
 ## Runtime handoff requirement
 
-Before this branch can be merged for production deployment, `server.js` must serve the built `dist/` assets for the public homepage without intercepting dynamic routes such as:
+Before this branch can be merged for production deployment, the Express runtime must serve the built `dist/` assets for the public homepage without intercepting dynamic routes such as:
 
 - `/verify/:qrvid`
 - `/issuer/*`
@@ -46,12 +51,26 @@ Before this branch can be merged for production deployment, `server.js` must ser
 - `/readyz`
 - `/version`
 
-The recommended behavior is:
+Required behavior:
 
 1. Serve `dist/assets/*` as immutable static assets.
 2. Serve `dist/index.html` for `/`.
 3. Keep all existing dynamic and operational routes under Express.
-4. Fall back to the existing server-rendered homepage if `dist/index.html` is missing.
+4. Fall back to the existing server-rendered homepage if the bundle is unavailable.
+
+## File disposition matrix
+
+| Source class | Disposition | Canonical location |
+|---|---|---|
+| React/Vite frontend | Migrated | `index.html`, `vite.config.js`, `src/web/` |
+| Visual system | Migrated | `src/web/styles.css` |
+| SEO assets | Migrated | `public/` |
+| Commercial strategy | Migrated/preserved | `docs/COMMERCIALIZATION_BASELINE.md` |
+| Content strategy | Migrated/updated | `docs/CONTENT_STRATEGY.md` |
+| Sites provenance | Preserved | `sites/qrv-global-verification/` |
+| `server.js` | qrv-node authority | root `server.js` |
+| `package.json` | Semantically merged | root `package.json` |
+| verification/security/CI | qrv-node authority | existing production files |
 
 ## Definition of done
 
@@ -59,12 +78,14 @@ The recommended behavior is:
 - [x] Customer-facing React source migrated
 - [x] Vite build integrated into `qrv-node`
 - [x] Canonical two-node URLs used in frontend configuration
+- [x] Commercialization baseline preserved
+- [x] Content strategy migrated and updated for `qrv-node` authority
+- [x] SEO assets migrated
+- [x] Sites provenance and manifest migrated
+- [x] production-readiness workflow validates frontend build without requiring a lockfile
 - [ ] Express serves `dist/index.html` and `dist/assets/*`
-- [ ] `npm install` succeeds
-- [ ] `npm run check` succeeds
-- [ ] `npm run build` succeeds
-- [ ] production CI passes
+- [ ] current production-readiness run passes
 - [ ] live acceptance passes after deployment
-- [ ] marketing repository retirement matrix completed
+- [ ] every remaining unique marketing-repository file is classified
 
-`qrv-marketing-site` must remain available as a migration source until all material content, SEO and provenance assets have a documented disposition.
+`qrv-marketing-site` must remain available as a migration source until the final unique-file audit is complete and the consolidated platform passes production acceptance.
