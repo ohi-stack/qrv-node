@@ -24,10 +24,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm install --no-audit --no-fund
 
       - name: Static checks
         run: npm run check
@@ -39,6 +38,7 @@ jobs:
           APP_VERSION=ci \
           QRV_PLATFORM_ORIGIN=http://127.0.0.1:3000 \
           QRV_API_BASE_URL=http://127.0.0.1:3999/api/v1 \
+          QRV_PLATFORM_API_KEY=ci-platform-key \
           SESSION_SECRET=ci-session-secret \
           ISSUER_ACCESS_CODE=ci-access-code \
           npm start > /tmp/qrv-node.log 2>&1 &
@@ -48,12 +48,21 @@ jobs:
       - name: Validate required local routes
         run: |
           set -euo pipefail
-          for path in / /healthz /readyz /version /verify /issuer /registry /docs /developers /pricing /status /security /about; do
+          for path in / /healthz /version /verify /issuer /registry /docs /developers /pricing /status /security /about; do
             code=$(curl -sS -o /tmp/response.txt -w '%{http_code}' "http://127.0.0.1:3000${path}")
             echo "$path -> $code"
             test "$code" -ge 200
             test "$code" -lt 400
           done
+
+      - name: Validate fail-closed readiness without API
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/ready.json -w '%{http_code}' http://127.0.0.1:3000/readyz)
+          cat /tmp/ready.json
+          echo "/readyz -> $code"
+          test "$code" -eq 503
+          node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('/tmp/ready.json','utf8')); if(x.ready!==false) process.exit(1)"
 
       - name: Stop platform node
         if: always()
