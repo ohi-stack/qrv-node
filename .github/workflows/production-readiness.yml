@@ -24,13 +24,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
         run: npm ci || npm install
 
       - name: Static checks
         run: npm run check
+
+      - name: Start mock canonical API
+        run: |
+          node -e "const http=require('http');http.createServer((req,res)=>{res.setHeader('content-type','application/json');if(req.url==='/healthz')return res.end(JSON.stringify({ok:true,status:'ok'}));if(req.url==='/readyz')return res.end(JSON.stringify({ok:true,ready:true}));res.statusCode=404;res.end(JSON.stringify({ok:false}));}).listen(3999,'127.0.0.1')" > /tmp/qrv-api-mock.log 2>&1 &
+          echo $! > /tmp/qrv-api-mock.pid
+          sleep 1
 
       - name: Start platform node
         run: |
@@ -39,6 +44,7 @@ jobs:
           APP_VERSION=ci \
           QRV_PLATFORM_ORIGIN=http://127.0.0.1:3000 \
           QRV_API_BASE_URL=http://127.0.0.1:3999/api/v1 \
+          QRV_PLATFORM_API_KEY=ci-api-key \
           SESSION_SECRET=ci-session-secret \
           ISSUER_ACCESS_CODE=ci-access-code \
           npm start > /tmp/qrv-node.log 2>&1 &
@@ -55,8 +61,10 @@ jobs:
             test "$code" -lt 400
           done
 
-      - name: Stop platform node
+      - name: Stop services
         if: always()
         run: |
           if [ -f /tmp/qrv-node.pid ]; then kill $(cat /tmp/qrv-node.pid) || true; fi
+          if [ -f /tmp/qrv-api-mock.pid ]; then kill $(cat /tmp/qrv-api-mock.pid) || true; fi
           cat /tmp/qrv-node.log || true
+          cat /tmp/qrv-api-mock.log || true
