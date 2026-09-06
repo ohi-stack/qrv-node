@@ -4,8 +4,17 @@
   "protocol": "QRVP-1",
   "standard": "QVS-1.0",
   "service": "qrv-platform",
+  "version": "2.0.0",
+  "frontend": {
+    "framework": "React",
+    "bundler": "Vite",
+    "output": "dist"
+  },
+  "productionServer": "Express",
+  "architecture": "two-node-consolidated",
   "publicRoutes": ["/", "/protocol", "/how-it-works", "/verify", "/registry", "/explorer", "/use-cases", "/developers", "/docs", "/api-reference", "/pricing", "/status", "/network", "/store", "/about", "/security", "/standards", "/enterprise", "/certificate-verification", "/contact", "/terms", "/privacy"],
-  "issuerRoutes": ["/issuer", "/issuer/dashboard", "/issuer/records", "/issuer/records/new", "/issuer/logout"],
+  "issuerRoutes": ["/issuer", "/issuer/dashboard", "/issuer/records", "/issuer/records/new"],
+  "platformApiRoutes": ["/platform/verify/:qrvid", "/platform/registry/:qrvid", "/platform/status", "/platform/issuer/session", "/platform/issuer/records"],
   "healthRoutes": ["/health", "/healthz", "/readyz", "/version"],
   "canonicalServices": {
     "platform": "https://qrv.network",
