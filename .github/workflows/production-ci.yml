@@ -20,13 +20,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
       - name: Syntax and acceptance-script validation
         run: npm run check
+
+      - name: Build QR-V Sites frontend
+        run: npm run build:web
+
+      - name: Confirm customer frontend artifact
+        run: test -f dist/index.html
+
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=high
