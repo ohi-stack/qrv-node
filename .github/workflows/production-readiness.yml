@@ -24,13 +24,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm install --no-audit --no-fund
 
-      - name: Static checks
-        run: npm run check
+      - name: Static checks and frontend build
+        run: npm run build
+
+      - name: Confirm Sites bundle
+        run: |
+          test -f dist/index.html
+          test -d dist/assets
 
       - name: Start platform node
         run: |
