@@ -7,14 +7,17 @@
   "scripts": {
     "build": "npm run build:web",
     "start": "node server.js",
+    "prestart": "node scripts/check-build-artifact.mjs",
     "dev": "node --watch server.js",
     "dev:web": "vite --host 0.0.0.0",
     "build:web": "vite build",
-    "lint": "node --check server.js && node --check scripts/live-acceptance.mjs && node --check src/verification.js && node scripts/check-web.mjs",
+    "lint": "node --check server.js && node --check scripts/check-build-artifact.mjs && node --check scripts/live-acceptance.mjs && node --check src/verification.js && node scripts/check-web.mjs",
     "check": "npm run lint",
+    "test": "npm run test:public-assets",
+    "test:public-assets": "npm run build:web && node --test test/public-assets.test.mjs",
     "smoke": "node -e \"const base=process.env.QRV_NODE_URL||'http://127.0.0.1:3000'; Promise.all(['/healthz','/readyz','/version'].map(p=>fetch(base+p).then(async r=>({status:r.status,body:await r.json()})))).then(console.log)\"",
     "acceptance:live": "node scripts/live-acceptance.mjs",
-    "validate:prod": "npm run check && npm run build:web"
+    "validate:prod": "npm run check && npm test"
   },
   "engines": {"node": ">=20"},
   "dependencies": {

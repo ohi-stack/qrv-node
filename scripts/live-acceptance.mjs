@@ -38,6 +38,30 @@ const checks = [
   { name: "platform-health", url: `${platformBase}/healthz`, expect: "json", expectStatus: 200 },
   { name: "platform-ready", url: `${platformBase}/readyz`, expect: "json", expectStatus: 200 },
   { name: "platform-version", url: `${platformBase}/version`, expect: "json", expectStatus: 200 },
+  {
+    name: "platform-robots",
+    url: `${platformBase}/robots.txt`,
+    expect: "text",
+    expectedContentType: "text/plain",
+    expectStatus: 200,
+    contains: ["Disallow: /issuer/dashboard", "Sitemap: https://qrv.network/sitemap.xml"]
+  },
+  {
+    name: "platform-sitemap",
+    url: `${platformBase}/sitemap.xml`,
+    expect: "text",
+    expectedContentType: "application/xml",
+    expectStatus: 200,
+    contains: ["https://qrv.network/verify", "https://qrv.network/issuer"]
+  },
+  {
+    name: "platform-webmanifest",
+    url: `${platformBase}/site.webmanifest`,
+    expect: "json",
+    expectedContentType: "application/manifest+json",
+    expectStatus: 200,
+    contains: ["QR-V Global Verification Network"]
+  },
   { name: "verify-entry", url: `${platformBase}/verify`, expect: "html", expectStatus: 200 },
   { name: "issuer-entry", url: `${platformBase}/issuer`, expect: "html", allowStatus: [200, 503] },
   { name: "registry-entry", url: `${platformBase}/registry`, expect: "html", expectStatus: 200 },
@@ -76,9 +100,13 @@ async function runCheck(check) {
     const allowedStatus = check.expectStatus !== undefined
       ? response.status === check.expectStatus
       : check.allowStatus?.includes(response.status) || response.ok;
-    const isExpectedType = check.expect === "json"
-      ? contentType.includes("application/json") || body.trim().startsWith("{")
-      : contentType.includes("text/html") || body.includes("<!doctype html") || body.includes("<html");
+    const isExpectedType = check.expectedContentType
+      ? contentType.includes(check.expectedContentType)
+      : check.expect === "json"
+        ? contentType.includes("application/json") || body.trim().startsWith("{")
+        : check.expect === "text"
+          ? contentType.startsWith("text/")
+          : contentType.includes("text/html") || body.includes("<!doctype html") || body.includes("<html");
     const containsExpected = (check.contains || []).every((value) => body.toUpperCase().includes(String(value).toUpperCase()));
     const excludesForbidden = (check.forbids || []).every((value) => !body.toUpperCase().includes(String(value).toUpperCase()));
     const originMatches = !check.expectOrigin || new URL(response.url).origin === check.expectOrigin;
