@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://qrv.network/</loc><priority>1.0</priority></url>
+  <url><loc>https://qrv.network/protocol</loc><priority>0.9</priority></url>
+  <url><loc>https://qrv.network/how-it-works</loc><priority>0.9</priority></url>
+  <url><loc>https://qrv.network/verify</loc><priority>1.0</priority></url>
+  <url><loc>https://qrv.network/registry</loc><priority>0.9</priority></url>
+  <url><loc>https://qrv.network/explorer</loc><priority>0.8</priority></url>
+  <url><loc>https://qrv.network/issuer</loc><priority>1.0</priority></url>
+  <url><loc>https://qrv.network/docs</loc><priority>0.8</priority></url>
+  <url><loc>https://qrv.network/developers</loc><priority>0.8</priority></url>
+  <url><loc>https://qrv.network/api-reference</loc><priority>0.8</priority></url>
+  <url><loc>https://qrv.network/use-cases</loc><priority>0.8</priority></url>
+  <url><loc>https://qrv.network/pricing</loc><priority>0.9</priority></url>
+  <url><loc>https://qrv.network/status</loc><priority>0.6</priority></url>
+  <url><loc>https://qrv.network/security</loc><priority>0.7</priority></url>
+  <url><loc>https://qrv.network/about</loc><priority>0.7</priority></url>
+</urlset>

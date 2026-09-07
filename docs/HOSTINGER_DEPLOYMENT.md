@@ -34,8 +34,12 @@ Never commit production secrets. `QRV_PLATFORM_API_KEY`, `SESSION_SECRET`, and `
 ```bash
 npm ci
 npm run check
+npm run build
+npm test
 npm start
 ```
+
+`npm start` fails closed when `dist/index.html` or any required public web artifact is absent. Hostinger must retain the output of `npm run build` for the runtime process.
 
 After deployment:
 
@@ -49,6 +53,7 @@ QRV_NODE_URL=https://qrv.network npm run acceptance:live
 - `/healthz` returns process health without depending on PostgreSQL.
 - `/readyz` confirms the API dependency is ready.
 - `/version` returns service and release metadata.
+- `/robots.txt`, `/sitemap.xml`, and `/site.webmanifest` are served from the built `dist/` artifact.
 - `/verify` renders the verification entry point.
 - `/issuer` renders the issuer authentication entry point.
 - `/status` reports dependency-aware service state.

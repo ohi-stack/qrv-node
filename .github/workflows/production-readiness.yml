@@ -31,6 +31,12 @@ jobs:
       - name: Static checks
         run: npm run check
 
+      - name: Build artifact and route tests
+        run: npm test
+
+      - name: Validate start artifact contract
+        run: npm run prestart
+
       - name: Start platform node
         run: |
           NODE_ENV=production \
@@ -48,7 +54,7 @@ jobs:
       - name: Validate required local routes
         run: |
           set -euo pipefail
-          for path in / /healthz /version /verify /issuer /registry /docs /developers /pricing /status /security /about; do
+          for path in / /healthz /version /robots.txt /sitemap.xml /site.webmanifest /verify /issuer /registry /docs /developers /pricing /status /security /about; do
             code=$(curl -sS -o /tmp/response.txt -w '%{http_code}' "http://127.0.0.1:3000${path}")
             echo "$path -> $code"
             test "$code" -ge 200

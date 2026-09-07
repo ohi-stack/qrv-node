@@ -6,9 +6,10 @@ const required = [
   'src/web/App.jsx',
   'src/web/config.js',
   'src/web/styles.css',
-  'src/web/public/robots.txt',
-  'src/web/public/sitemap.xml',
-  'src/web/public/site.webmanifest',
+  'public/robots.txt',
+  'public/sitemap.xml',
+  'public/site.webmanifest',
+  'scripts/check-build-artifact.mjs',
   'vite.config.js'
 ];
 
@@ -20,8 +21,8 @@ const app = readFileSync('src/web/App.jsx', 'utf8');
 const config = readFileSync('src/web/config.js', 'utf8');
 const css = readFileSync('src/web/styles.css', 'utf8');
 const index = readFileSync('src/web/index.html', 'utf8');
-const robots = readFileSync('src/web/public/robots.txt', 'utf8');
-const sitemap = readFileSync('src/web/public/sitemap.xml', 'utf8');
+const robots = readFileSync('public/robots.txt', 'utf8');
+const sitemap = readFileSync('public/sitemap.xml', 'utf8');
 
 const requiredAppTerms = [
   'A verification layer for QR-based systems.',
@@ -61,6 +62,10 @@ for (const token of ['--gold:#f2d06b', '--cyan:#55c7ff', '--panel:#101936']) {
 
 if (!index.includes('rel="manifest"') || !index.includes('https://qrv.network/')) {
   throw new Error('Frontend index is missing canonical/manifest metadata.');
+}
+
+if (!readFileSync('vite.config.js', 'utf8').includes("publicDir: '../../public'")) {
+  throw new Error('Vite must package the repository public directory into the deployment artifact.');
 }
 
 if (!robots.includes('Disallow: /issuer/dashboard') || !robots.includes('Sitemap: https://qrv.network/sitemap.xml')) {
