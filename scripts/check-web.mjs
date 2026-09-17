@@ -6,6 +6,7 @@ const required = [
   'src/web/App.jsx',
   'src/web/config.js',
   'src/web/styles.css',
+  'src/web/public/qrv-logo.svg',
   'src/web/public/robots.txt',
   'src/web/public/sitemap.xml',
   'src/web/public/site.webmanifest',
@@ -20,13 +21,18 @@ const app = readFileSync('src/web/App.jsx', 'utf8');
 const config = readFileSync('src/web/config.js', 'utf8');
 const css = readFileSync('src/web/styles.css', 'utf8');
 const index = readFileSync('src/web/index.html', 'utf8');
+const logo = readFileSync('src/web/public/qrv-logo.svg', 'utf8');
 const robots = readFileSync('src/web/public/robots.txt', 'utf8');
 const sitemap = readFileSync('src/web/public/sitemap.xml', 'utf8');
 
 const requiredAppTerms = [
-  'A verification layer for QR-based systems.',
+  'Turn every',
+  'scan into proof.',
+  'GLOBAL VERIFICATION NETWORK',
+  'LIVE PUBLIC RECORD',
+  'PUBLIC LAUNCH',
   'QR-V Issuer Portal',
-  'Verified Certificates',
+  'Verified certificates first.',
   '/verify',
   '/issuer',
   '/registry',
@@ -55,8 +61,16 @@ for (const legacyOrigin of [
   }
 }
 
-for (const token of ['--gold:#f2d06b', '--cyan:#55c7ff', '--panel:#101936']) {
+for (const token of ['--cyan:#2dd7ea', '--green:#43eca7', '--panel:#071c2b', '--grid:rgba(46,211,232,.085)']) {
   if (!css.includes(token)) throw new Error(`Sites visual token missing: ${token}`);
+}
+
+for (const behavior of ['@keyframes pulse', '@keyframes beamDrift', '@keyframes scanCard', '@media(max-width:760px)', 'prefers-reduced-motion']) {
+  if (!css.includes(behavior)) throw new Error(`Sites responsive/animation contract missing: ${behavior}`);
+}
+
+if (!logo.includes('QR-V Global Verification Network') || !logo.includes('data:image/jpeg;base64,')) {
+  throw new Error('QR-V Sites logo asset is missing or does not preserve the captured logo treatment.');
 }
 
 if (!index.includes('rel="manifest"') || !index.includes('https://qrv.network/')) {
@@ -71,4 +85,4 @@ for (const route of ['/verify', '/issuer', '/registry', '/developers', '/docs', 
   if (!sitemap.includes(`https://qrv.network${route}`)) throw new Error(`Sitemap missing route: ${route}`);
 }
 
-console.log('QR-V consolidated Sites frontend check passed.');
+console.log('QR-V Sites visual convergence check passed.');
