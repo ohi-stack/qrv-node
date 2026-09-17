@@ -23,13 +23,18 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
       - name: Static checks
         run: npm run check
+
+      - name: Build compiled Sites frontend
+        run: |
+          npm run build
+          npm run check:dist
 
       - name: Start platform node
         run: |
