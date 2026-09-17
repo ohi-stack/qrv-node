@@ -1,0 +1,81 @@
+{
+  "version": "1.0.0",
+  "canonicalRepository": "ohi-stack/qrv-node",
+  "productionBranch": "main",
+  "integrationBranch": "integration/multi-builder",
+  "lanes": {
+    "chatgpt-sites": {
+      "branch": "work/chatgpt-sites",
+      "webPort": 3101,
+      "nodePort": 3201,
+      "primaryScope": [
+        "public React UI",
+        "visual system",
+        "responsive layout",
+        "public content",
+        "navigation",
+        "accessibility",
+        "SEO presentation"
+      ]
+    },
+    "google-ai-studio": {
+      "branch": "work/google-ai-studio",
+      "webPort": 3102,
+      "nodePort": 3202,
+      "primaryScope": [
+        "experimental full-stack features",
+        "Gemini-powered features",
+        "interactive prototypes",
+        "developer tooling",
+        "server-side integrations",
+        "data visualization",
+        "workflow experiments"
+      ]
+    },
+    "integration": {
+      "branch": "integration/multi-builder",
+      "webPort": 3103,
+      "nodePort": 3203,
+      "primaryScope": [
+        "merge reconciliation",
+        "cross-lane validation",
+        "release candidate assembly",
+        "production acceptance preparation"
+      ]
+    }
+  },
+  "protectedRuntimePaths": [
+    "server.js",
+    "src/verification.js",
+    "scripts/live-acceptance.mjs",
+    ".github/workflows/production-ci.yml",
+    ".github/workflows/production-readiness.yml"
+  ],
+  "protectedRoutePrefixes": [
+    "/verify",
+    "/issuer",
+    "/registry",
+    "/api",
+    "/healthz",
+    "/health",
+    "/readyz",
+    "/version",
+    "/metrics",
+    "/qr",
+    "/explorer",
+    "/status"
+  ],
+  "promotionFlow": [
+    "work/chatgpt-sites -> integration/multi-builder",
+    "work/google-ai-studio -> integration/multi-builder",
+    "integration/multi-builder -> main"
+  ],
+  "rules": [
+    "No builder writes directly to main.",
+    "No development lane receives production secrets.",
+    "Changes to protected runtime paths require integration review and full production validation.",
+    "The canonical API remains https://api.qrv.network/api/v1.",
+    "The canonical writable registry remains behind qrv-api.",
+    "A builder may propose operational changes but may not redefine QRVP-1 or QVS-1.0 semantics without an explicit protocol/standard change."
+  ]
+}
