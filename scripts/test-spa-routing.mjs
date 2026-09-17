@@ -66,6 +66,22 @@ try {
     throw new Error('Direct QRVID compatibility redirect was intercepted by SPA fallback.');
   }
 
+  const legacyVerify = await fetch(`${base}/`, {
+    headers: { host: 'verify.qrv.network', accept: 'text/html' },
+    redirect: 'manual'
+  });
+  if (legacyVerify.status !== 308 || legacyVerify.headers.get('location') !== `${base}/verify`) {
+    throw new Error('verify.qrv.network must redirect before SPA fallback.');
+  }
+
+  const legacyIssuer = await fetch(`${base}/dashboard`, {
+    headers: { host: 'issuer.qrv.network', accept: 'text/html' },
+    redirect: 'manual'
+  });
+  if (legacyIssuer.status !== 308 || legacyIssuer.headers.get('location') !== `${base}/issuer/dashboard`) {
+    throw new Error('issuer.qrv.network must redirect before SPA fallback.');
+  }
+
   console.log('QR-V SPA routing contract passed.');
 } finally {
   child.kill('SIGTERM');
