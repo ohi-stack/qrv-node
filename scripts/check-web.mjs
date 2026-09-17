@@ -10,7 +10,10 @@ const required = [
   'src/web/public/robots.txt',
   'src/web/public/sitemap.xml',
   'src/web/public/site.webmanifest',
-  'vite.config.js'
+  'vite.config.js',
+  'server.js',
+  'scripts/check-dist.mjs',
+  'scripts/test-spa-routing.mjs'
 ];
 
 for (const path of required) {
@@ -24,6 +27,7 @@ const index = readFileSync('src/web/index.html', 'utf8');
 const logo = readFileSync('src/web/public/qrv-logo.svg', 'utf8');
 const robots = readFileSync('src/web/public/robots.txt', 'utf8');
 const sitemap = readFileSync('src/web/public/sitemap.xml', 'utf8');
+const server = readFileSync('server.js', 'utf8');
 
 const requiredAppTerms = [
   'Turn every',
@@ -85,4 +89,26 @@ for (const route of ['/verify', '/issuer', '/registry', '/developers', '/docs', 
   if (!sitemap.includes(`https://qrv.network${route}`)) throw new Error(`Sitemap missing route: ${route}`);
 }
 
-console.log('QR-V Sites visual convergence check passed.');
+for (const protectedPrefix of [
+  "'/verify'",
+  "'/issuer'",
+  "'/registry'",
+  "'/api'",
+  "'/healthz'",
+  "'/readyz'",
+  "'/version'"
+]) {
+  if (!server.includes(protectedPrefix)) throw new Error(`SPA exclusion missing from runtime: ${protectedPrefix}`);
+}
+
+for (const runtimeTerm of [
+  'SPA_EXCLUDED_PREFIXES',
+  'express.static(WEB_DIST',
+  'shouldServeSpa(req)',
+  'res.sendFile(WEB_INDEX)',
+  'Compiled Sites frontend missing'
+]) {
+  if (!server.includes(runtimeTerm)) throw new Error(`Sites runtime convergence contract missing: ${runtimeTerm}`);
+}
+
+console.log('QR-V Sites visual and runtime convergence checks passed.');
