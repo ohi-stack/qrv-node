@@ -3,9 +3,19 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import QRCode from 'qrcode';
+import path from 'node:path';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const app=express();app.disable('x-powered-by');app.set('trust proxy',1);app.use(helmet({contentSecurityPolicy:false}));app.use(express.json({limit:'1mb'}));app.use(express.urlencoded({extended:false,limit:'1mb'}));
 const NODE_ENV=process.env.NODE_ENV||'development',PORT=Number(process.env.PORT||3000),VERSION=process.env.APP_VERSION||'1.1.0',SERVICE='qrv-platform',APP_ORIGIN=(process.env.QRV_PLATFORM_ORIGIN||'https://qrv.network').replace(/\/$/,''),API_BASE_URL=(process.env.QRV_API_BASE_URL||'https://api.qrv.network/api/v1').replace(/\/$/,''),API_ORIGIN=API_BASE_URL.replace(/\/api\/v1$/,''),API_WRITE_KEY=process.env.QRV_PLATFORM_API_KEY||process.env.QRV_API_KEY||'',SESSION_SECRET=process.env.SESSION_SECRET||'',ISSUER_ACCESS_CODE=process.env.ISSUER_ACCESS_CODE||'',SESSION_COOKIE='qrv_issuer_session',SESSION_TTL_MS=Number(process.env.SESSION_TTL_MS||43200000),STARTED_AT=new Date().toISOString();
+const __filename=fileURLToPath(import.meta.url),__dirname=path.dirname(__filename),WEB_DIST_DIR=path.join(__dirname,'dist'),WEB_INDEX=path.join(WEB_DIST_DIR,'index.html');
+const SPA_EXCLUDED_PREFIXES=['/verify','/issuer','/registry','/api/v1','/healthz','/health','/readyz','/version','/qr','/robots.txt','/sitemap.xml','/explorer','/status'];
+const pathMatchesPrefix=(pathname,prefix)=>pathname===prefix||pathname.startsWith(`${prefix}/`);
+function shouldServeSpa(req){if(!['GET','HEAD'].includes(req.method))return false;if(!req.accepts('html'))return false;const pathname=req.path;if(/^\/QRV-[A-Za-z0-9-]+$/.test(pathname))return false;if(SPA_EXCLUDED_PREFIXES.some(prefix=>pathMatchesPrefix(pathname,prefix)))return false;return existsSync(WEB_INDEX);}
+if(NODE_ENV==='production'&&!existsSync(WEB_INDEX))throw new Error('Compiled Sites frontend missing: run npm run build before npm start');
+app.use(express.static(WEB_DIST_DIR,{index:false,fallthrough:true,maxAge:NODE_ENV==='production'?'1h':0,setHeaders(res,filePath){if(filePath.includes(`${path.sep}assets${path.sep}`))res.setHeader('Cache-Control','public, max-age=31536000, immutable');}}));
+app.use((req,res,next)=>shouldServeSpa(req)?res.sendFile(WEB_INDEX):next());
 app.use(rateLimit({windowMs:60000,max:240,standardHeaders:true,legacyHeaders:false}));
 const legacyHostRoutes={'verify.qrv.network':'/verify','issuer.qrv.network':'/issuer','registry.qrv.network':'/registry','explorer.qrv.network':'/explorer','docs.qrv.network':'/docs','developers.qrv.network':'/developers','status.qrv.network':'/status','store.qrv.network':'/store','wallet.qrv.network':'/wallet','admin.qrv.network':'/admin'};
 app.use((req,res,next)=>{const host=String(req.hostname||'').toLowerCase();if(host==='www.qrv.network')return res.redirect(308,`${APP_ORIGIN}${req.originalUrl}`);const prefix=legacyHostRoutes[host];if(!prefix)return next();const suffix=req.originalUrl==='/'?'':req.originalUrl;return res.redirect(308,`${APP_ORIGIN}${prefix}${suffix}`);});
