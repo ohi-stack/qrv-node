@@ -8,6 +8,7 @@
   "syncPolicy": "sites-source-consolidated-into-qrv-node",
   "siteSourceRoot": "sites/qrv-global-verification",
   "frontendSourceRoot": "src/web",
+  "visualSystem": "QR-V Sites 2026-09-17",
   "canonicalPublicRoutes": [
     "/",
     "/protocol",
@@ -25,14 +26,18 @@
     "/about"
   ],
   "requiredSiteElements": [
-    "responsive header",
-    "mega-menu-ready information architecture",
-    "mobile navigation",
-    "verification-focused hero",
-    "QR-V network visual representation",
-    "verification CTA",
-    "issuer CTA",
-    "responsive page sections"
+    "official QR-V logo on light header",
+    "responsive desktop navigation and mobile hamburger navigation",
+    "dark QR-V grid background",
+    "large high-contrast verification-focused typography",
+    "cyan primary verification CTA",
+    "green issuer CTA and status accents",
+    "public launch status indicators",
+    "SHA-256 and Ed25519 implementation-state badges",
+    "live public record card backed by verification API state",
+    "network beam and node animation treatment",
+    "mobile layout derived from the same React source",
+    "verification, issuer, protocol, registry, developer, pricing, status and company marketing content"
   ],
   "runtimeBoundaries": {
     "publicPlatformSourceAndRuntime": "ohi-stack/qrv-node",
@@ -43,7 +48,8 @@
     "Preserve Sites provenance and migrated source history.",
     "Mobile and desktop must render from the same source revision.",
     "Protected API credentials and registry secrets must never be committed with site files.",
-    "Public verification behavior remains deterministic under QRVP-1 and QVS-1.0."
+    "Public verification behavior remains deterministic under QRVP-1 and QVS-1.0.",
+    "A live record card may display VERIFIED only when the verification API returns VERIFIED."
   ],
-  "lastUpdated": "2026-09-06T15:12:00Z"
+  "lastUpdated": "2026-09-17T15:51:00Z"
 }
