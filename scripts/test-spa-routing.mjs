@@ -73,7 +73,7 @@ try {
   }
 
   const legacyVerify = await fetch(`${base}/`, {
-    headers: { host: 'verify.qrv.network', accept: 'text/html' },
+    headers: { 'x-forwarded-host': 'verify.qrv.network', accept: 'text/html' },
     redirect: 'manual'
   });
   if (legacyVerify.status !== 308 || legacyVerify.headers.get('location') !== `${base}/verify`) {
@@ -81,7 +81,7 @@ try {
   }
 
   const legacyIssuer = await fetch(`${base}/dashboard`, {
-    headers: { host: 'issuer.qrv.network', accept: 'text/html' },
+    headers: { 'x-forwarded-host': 'issuer.qrv.network', accept: 'text/html' },
     redirect: 'manual'
   });
   if (legacyIssuer.status !== 308 || legacyIssuer.headers.get('location') !== `${base}/issuer/dashboard`) {
