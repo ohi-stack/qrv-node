@@ -31,7 +31,7 @@ const requiredAppTerms = [
   'GLOBAL VERIFICATION NETWORK',
   'LIVE PUBLIC RECORD',
   'PUBLIC LAUNCH',
-  'QR-V Issuer Portal',
+  'Issuer Portal',
   'Verified certificates first.',
   '/verify',
   '/issuer',
