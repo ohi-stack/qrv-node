@@ -1,88 +1,145 @@
-# QR-V™ Sites Frontend Convergence
+# QR-V™ Sites Frontend Runtime Convergence
 
 ## Status
 
-The customer-facing frontend from `ohi-stack/qrv-marketing-site` is now represented in `qrv-node` as a buildable React/Vite source layer under `src/web/`.
+The customer-facing Sites frontend is now integrated into `qrv-node` as both:
 
-This change deliberately preserves the existing `qrv-node` Express runtime, issuer controls, verification behavior, health/readiness endpoints, API boundary, redirects, and production acceptance logic.
+1. the canonical React/Vite source layer under `src/web/`; and
+2. the compiled browser presentation served from `dist/` by the existing Express production runtime.
 
-## Source authority
+This completes the runtime convergence step. It does **not** move trusted verification, registry mutation, issuer authentication, health/readiness, or API compatibility behavior into the SPA.
 
-For this convergence stage:
+## Runtime ownership
 
-- `qrv-node` remains authoritative for server/runtime behavior, authentication, sessions, API communication, fail-closed verification, health/readiness, production configuration, CI, and acceptance.
-- the Sites/marketing source remains authoritative for the customer-facing visual system and conversion-oriented public presentation.
+`qrv-node` remains authoritative for:
 
-## Imported visual system
+- Express server/runtime behavior;
+- issuer authentication and sessions;
+- public verification results;
+- registry lookups;
+- QR generation;
+- fail-closed API dependency handling;
+- health/readiness/version endpoints;
+- legacy-host compatibility redirects;
+- the `/api/v1/*` compatibility gateway;
+- production CI and live acceptance.
 
-The consolidated frontend preserves the Sites design language:
+The compiled Sites frontend owns the public/customer presentation for ordinary human-facing routes.
 
-- deep navy verification-infrastructure background;
-- gold primary action/accent system;
-- cyan protocol/data accents;
-- high-contrast enterprise typography;
-- rounded verification cards and service panels;
-- prominent public verification CTA;
-- responsive one-column mobile behavior;
-- customer-oriented product, use-case, issuer, and developer messaging.
-
-## Canonical production URLs
-
-The frontend uses the two-node production model:
+## Canonical production topology
 
 ```text
-qrv.network
-  /verify
-  /issuer
-  /registry
-  /docs
-  /developers
-  /pricing
-  /status
-  /protocol
-  /standards
-  /security
-  /use-cases
-  /about
-
-api.qrv.network/api/v1
-  trusted backend / data authority
+Browser / QR scan / issuer user
+              ↓
+        https://qrv.network
+              ↓
+   Express + compiled Sites UI
+              ↓
+https://api.qrv.network/api/v1
+              ↓
+     Canonical QR-V registry
 ```
 
-Legacy `verify.`, `issuer.`, `registry.`, `docs.`, and `developers.` production origins are not permitted in the consolidated frontend configuration.
+`api.qrv.network` remains the only separately operated trusted API/data-plane hostname.
 
-## Build
+## SPA fallback exclusions
+
+The following route families are explicitly excluded from SPA fallback and remain server-owned:
+
+```text
+/verify
+/verify/*
+/issuer
+/issuer/*
+/registry
+/registry/*
+/api/*
+/healthz
+/health
+/readyz
+/version
+/metrics
+/qr/*
+/explorer
+/explorer/*
+/status
+/robots.txt
+/sitemap.xml
+/site.webmanifest
+```
+
+Direct QRVID compatibility paths such as:
+
+```text
+/QRV-PROD-CERT-000001
+```
+
+also bypass SPA fallback and retain their 308 redirect to the canonical verification URL.
+
+## Legacy hostname precedence
+
+Legacy branded hostnames redirect **before** any static or SPA handling:
+
+```text
+verify.qrv.network      → qrv.network/verify
+issuer.qrv.network      → qrv.network/issuer
+registry.qrv.network    → qrv.network/registry
+explorer.qrv.network    → qrv.network/explorer
+docs.qrv.network        → qrv.network/docs
+developers.qrv.network  → qrv.network/developers
+status.qrv.network      → qrv.network/status
+store.qrv.network       → qrv.network/store
+wallet.qrv.network      → qrv.network/wallet
+admin.qrv.network       → qrv.network/admin
+```
+
+This prevents a legacy hostname from accidentally rendering the SPA as an independent production origin.
+
+## Build and startup contract
 
 ```bash
 npm install
-npm run check
-npm run build:web
+npm run build
+npm run validate:prod
+npm start
 ```
 
-The frontend build output is written to `dist/`.
+Vite writes the compiled frontend to `dist/`.
 
-## Validation
+In `NODE_ENV=production`, `qrv-node` refuses to start if `dist/index.html` is missing. This prevents a production deployment from silently falling back to the older server-rendered homepage because the frontend build step was skipped.
 
-`scripts/check-web.mjs` verifies:
+Hashed assets under `dist/assets/` are served with immutable long-term caching. Other compiled public assets are served from `dist/` without intercepting protected server routes.
 
-- required React/Vite source files exist;
-- the customer-facing QR-V product language is retained;
-- canonical public routes are present;
-- `api.qrv.network/api/v1` remains the backend authority;
-- legacy production subdomain origins are absent;
-- the core Sites visual tokens remain present.
+## Validation gates
 
-## Runtime activation gate
+`npm run validate:prod` now performs all of the following:
 
-This convergence does **not** replace the production Express route surface merely because the React build exists.
+1. JavaScript syntax checks;
+2. Sites visual/content contract checks;
+3. compiled frontend build;
+4. compiled artifact verification;
+5. executable local routing contract test.
 
-Before switching `/` to the compiled frontend, require:
+The routing test proves:
 
-1. `npm run validate:prod` passes;
-2. the built frontend is served without intercepting `/healthz`, `/readyz`, `/version`, `/api/v1/*`, `/verify/:qrvid`, `/issuer/*`, or other dynamic routes;
-3. issuer authentication and session behavior remains unchanged;
-4. public verification remains fail-closed when the API is unavailable;
-5. live acceptance passes against `QRV-PROD-CERT-000001`;
-6. visual review confirms parity with the Sites customer experience.
+- `/` returns the compiled Sites app;
+- public deep links such as `/protocol`, `/products/...`, `/solutions/...`, and `/docs/...` return the SPA shell;
+- `/verify`, `/registry`, and `/issuer` remain Express-owned;
+- `/healthz` and `/version` remain JSON;
+- `/api/v1/*` cannot become an HTML SPA response;
+- direct QRVID redirects remain intact;
+- legacy hostnames redirect before SPA fallback.
 
-Only after this gate should the compiled frontend become the canonical `/` presentation in production.
+## Production acceptance
+
+Runtime convergence is code-complete when this branch passes CI. Production activation still requires deployment acceptance:
+
+```text
+qrv.network homepage loads compiled Sites UI
+→ operational routes remain server-owned
+→ api.qrv.network is healthy and ready
+→ QRV-PROD-CERT-000001 verifies through the canonical API
+→ issuer login / issuance / QR / verification / revocation remain functional
+```
+
+The frontend may improve presentation, but it must never assert a verification result independently of the canonical API/registry authority.
