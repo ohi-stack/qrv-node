@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "effectiveDate": "2026-09-17",
+  "primary": [
+    {
+      "label": "Products",
+      "href": "/products"
+    },
+    {
+      "label": "Solutions",
+      "href": "/solutions"
+    },
+    {
+      "label": "Developers",
+      "href": "/developers"
+    },
+    {
+      "label": "Documentation",
+      "href": "/docs"
+    },
+    {
+      "label": "Pricing",
+      "href": "/pricing"
+    },
+    {
+      "label": "About",
+      "href": "/about"
+    }
+  ],
+  "actions": [
+    {
+      "label": "Verify Record",
+      "href": "/verify"
+    },
+    {
+      "label": "Issuer Login",
+      "href": "/issuer/login"
+    },
+    {
+      "label": "Get Started",
+      "href": "/issuer/onboarding"
+    }
+  ],
+  "rule": "Do not expose the full production sitemap in the primary header. Deeper routes belong in mega menus, contextual navigation, dashboards, docs sidebars, and footer navigation."
+}
