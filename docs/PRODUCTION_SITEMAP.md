@@ -1,82 +1,465 @@
-# QR-V™ Global Verification Network — Production Sitemap
+# QR-V™ Global Verification Network — Full Production Sitemap
 
-**Baseline:** 2026-09-17  
-**Canonical public platform:** https://qrv.network  
-**Canonical trusted API/data plane:** https://api.qrv.network
+**Baseline:** 2026-09-18  
+**Canonical human-facing platform:** `https://qrv.network`  
+**Canonical trusted API/data plane:** `https://api.qrv.network`  
+**Protocol:** QRVP-1  
+**Verification standard:** QVS-1.0
 
 ## Architecture rule
 
-qrv.network is the canonical human/customer/issuer/developer platform. api.qrv.network is the only separately operated machine-oriented trust/data boundary. Legacy QR-V subdomains are compatibility redirects, not competing applications.
+`qrv.network` is the canonical human/customer/issuer/developer platform. `api.qrv.network` is the only separately operated machine-oriented trust/data boundary. Legacy QR-V subdomains are compatibility redirects or branded entry points, not competing applications.
+
+```text
+qrv.network
+    │
+    └── api.qrv.network/api/v1
+            │
+            └── PostgreSQL canonical registry
+```
+
+New QR-V codes encode:
+
+```text
+https://qrv.network/verify/{QRVID}
+```
 
 ## Main navigation
 
+The public header remains conversion-focused:
+
+```text
 Products · Solutions · Developers · Documentation · Pricing · About
+```
 
-Primary actions: Verify Record · Issuer Login · Get Started
+Primary actions:
 
-## Public route families
+```text
+Verify Record · Issuer Login · Get Started
+```
 
-- `/`
-- `/about/*`: what-is-qr-v, how-it-works, network-architecture, trust-model, security, standards, contact
-- `/verify/*`: `/verify/{qrvid}`, scan, manual, verification-states, how-verification-works, help
-- `/registry/*`: search, `/{qrvid}`, issuers, `/issuers/{issuerId}`, record-types, status, about
-- `/issuer/*`: login, register, onboarding, dashboard, records, certificates, contact-cards, analytics, audit-log, team, api-keys, webhooks, integrations, billing, subscription, settings, security, support
-- `/products/*`: certificate-verification, document-verification, identity-verification, membership-verification, product-authentication, asset-registration, property-records, financial-records, verified-contact-card, api, enterprise, white-label
-- `/solutions/*`: education, government, business, identity, membership, certificates, documents, products, property, financial-records, assets, agents
-- `/developers/*`: get-started, quickstart, authentication, api-keys, verification, issuance, revocation, registry, webhooks, errors, rate-limits, security, SDKs, agents, examples
-- `/docs/*`: overview, protocol, verification, registry, issuers, developers, api-reference, deployment, examples, changelog
-- `/protocol/*`: qr-vp-1, qvs-1, identifier-specification, verification-model, cryptography, issuer-model, registry-model, lifecycle, versioning
-- `/security/*`: overview, cryptography, ed25519, sha-256, key-management, privacy, responsible-disclosure, report
-- `/enterprise/*`: api, integrations, white-label, bulk-issuance, security, support, contact
-- `/pricing/*`: issuer, api, enterprise, white-label
-- `/resources/*`: guides, tutorials, examples, use-cases, faq, downloads, support
-- `/network/*`: architecture, nodes, status, version, changelog
-- `/status/*`: platform, api, verification, incidents
-- `/company/*`: about, contact, partners, news
-- `/support/*`: issuer, developer, verification, report-record, contact
-- `/legal/*`: terms, privacy, cookies, acceptable-use, api-terms, issuer-agreement, security, disclosures
+The complete sitemap belongs in mega menus, contextual navigation, dashboards, documentation, and footer navigation—not directly in the header.
 
-## Issuer record routes
+## Full public route tree
 
-`/issuer/records/new`  
-`/issuer/records/{qrvid}`  
-`/issuer/records/{qrvid}/edit`  
-`/issuer/records/{qrvid}/qr`  
-`/issuer/records/{qrvid}/certificate`  
-`/issuer/records/{qrvid}/history`  
-`/issuer/records/{qrvid}/revoke`
+### `/about`
 
-Certificate routes include new, templates, bulk and import. Contact-card routes include new, `/{qrvid}` and bulk.
+```text
+/about
+/about/what-is-qr-v
+/about/how-it-works
+/about/network-architecture
+/about/trust-model
+/about/security
+/about/standards
+/about/contact
+```
 
-## API boundary
+### `/verify`
 
-api.qrv.network is not a second website. Normative endpoint inventory must be generated from OpenAPI.
+```text
+/verify
+/verify/{qrvid}
+/verify/scan
+/verify/manual
+/verify/verification-states
+/verify/how-verification-works
+/verify/help
+```
 
-Operational endpoints: `/healthz`, `/readyz`, `/version`, `/metrics`.
+### `/registry`
 
-API v1 capability families: status, verify, registry, issuers, certificates, contact-cards, analytics, audit, webhooks and keys.
+```text
+/registry
+/registry/search
+/registry/{qrvid}
+/registry/issuers
+/registry/issuers/{issuerId}
+/registry/record-types
+/registry/status
+/registry/about
+```
 
-## Compatibility redirects
+### `/issuer`
 
-| Host | Canonical destination |
+```text
+/issuer
+/issuer/login
+/issuer/register
+/issuer/onboarding
+/issuer/dashboard
+/issuer/records
+/issuer/records/new
+/issuer/records/{qrvid}
+/issuer/records/{qrvid}/edit
+/issuer/records/{qrvid}/qr
+/issuer/records/{qrvid}/certificate
+/issuer/records/{qrvid}/history
+/issuer/records/{qrvid}/revoke
+/issuer/certificates
+/issuer/certificates/new
+/issuer/certificates/templates
+/issuer/certificates/bulk
+/issuer/certificates/import
+/issuer/contact-cards
+/issuer/contact-cards/new
+/issuer/contact-cards/{qrvid}
+/issuer/contact-cards/bulk
+/issuer/analytics
+/issuer/audit-log
+/issuer/team
+/issuer/api-keys
+/issuer/webhooks
+/issuer/integrations
+/issuer/billing
+/issuer/subscription
+/issuer/settings
+/issuer/security
+/issuer/support
+```
+
+### `/products`
+
+```text
+/products
+/products/certificate-verification
+/products/document-verification
+/products/identity-verification
+/products/membership-verification
+/products/product-authentication
+/products/asset-registration
+/products/property-records
+/products/financial-records
+/products/verified-contact-card
+/products/api
+/products/enterprise
+/products/white-label
+```
+
+### `/solutions`
+
+```text
+/solutions
+/solutions/education
+/solutions/government
+/solutions/business
+/solutions/identity
+/solutions/membership
+/solutions/certificates
+/solutions/documents
+/solutions/products
+/solutions/property
+/solutions/financial-records
+/solutions/assets
+/solutions/agents
+```
+
+### `/developers`
+
+```text
+/developers
+/developers/get-started
+/developers/quickstart
+/developers/authentication
+/developers/api-keys
+/developers/verification
+/developers/issuance
+/developers/revocation
+/developers/registry
+/developers/webhooks
+/developers/errors
+/developers/rate-limits
+/developers/security
+/developers/sdks
+/developers/sdks/javascript
+/developers/sdks/typescript
+/developers/sdks/node
+/developers/sdks/rest
+/developers/agents
+/developers/agents/overview
+/developers/agents/verification
+/developers/agents/examples
+/developers/agents/security
+/developers/examples
+/developers/examples/verify
+/developers/examples/issue
+/developers/examples/revoke
+/developers/examples/webhooks
+```
+
+### `/docs`
+
+```text
+/docs
+/docs/overview
+/docs/overview/what-is-qr-v
+/docs/overview/core-concepts
+/docs/overview/product-scope
+/docs/overview/architecture
+/docs/protocol
+/docs/protocol/qr-vp-1
+/docs/protocol/identifiers
+/docs/protocol/records
+/docs/protocol/resolution
+/docs/protocol/hashing
+/docs/protocol/signatures
+/docs/protocol/revocation
+/docs/verification
+/docs/verification/qvs-1
+/docs/verification/workflow
+/docs/verification/states
+/docs/verification/integrity
+/docs/verification/fail-closed
+/docs/registry
+/docs/registry/architecture
+/docs/registry/records
+/docs/registry/issuers
+/docs/registry/lifecycle
+/docs/registry/audit
+/docs/issuers
+/docs/issuers/getting-started
+/docs/issuers/onboarding
+/docs/issuers/issuance
+/docs/issuers/revocation
+/docs/issuers/key-management
+/docs/issuers/security
+/docs/developers
+/docs/api-reference
+/docs/deployment
+/docs/examples
+/docs/changelog
+```
+
+### `/protocol`
+
+```text
+/protocol
+/protocol/qr-vp-1
+/protocol/qvs-1
+/protocol/identifier-specification
+/protocol/verification-model
+/protocol/cryptography
+/protocol/issuer-model
+/protocol/registry-model
+/protocol/lifecycle
+/protocol/versioning
+```
+
+### `/security`
+
+```text
+/security
+/security/overview
+/security/cryptography
+/security/ed25519
+/security/sha-256
+/security/key-management
+/security/privacy
+/security/responsible-disclosure
+/security/report
+```
+
+### `/enterprise`
+
+```text
+/enterprise
+/enterprise/api
+/enterprise/integrations
+/enterprise/white-label
+/enterprise/bulk-issuance
+/enterprise/security
+/enterprise/support
+/enterprise/contact
+```
+
+### `/pricing`
+
+```text
+/pricing
+/pricing/issuer
+/pricing/api
+/pricing/enterprise
+/pricing/white-label
+```
+
+### `/resources`
+
+```text
+/resources
+/resources/guides
+/resources/tutorials
+/resources/examples
+/resources/use-cases
+/resources/faq
+/resources/downloads
+/resources/support
+```
+
+### `/network`
+
+```text
+/network
+/network/architecture
+/network/nodes
+/network/status
+/network/version
+/network/changelog
+```
+
+### `/status`
+
+```text
+/status
+/status/platform
+/status/api
+/status/verification
+/status/incidents
+```
+
+### `/company`
+
+```text
+/company
+/company/about
+/company/contact
+/company/partners
+/company/news
+```
+
+### `/support`
+
+```text
+/support
+/support/issuer
+/support/developer
+/support/verification
+/support/report-record
+/support/contact
+```
+
+### `/legal`
+
+```text
+/legal
+/legal/terms
+/legal/privacy
+/legal/cookies
+/legal/acceptable-use
+/legal/api-terms
+/legal/issuer-agreement
+/legal/security
+/legal/disclosures
+```
+
+## API sitemap
+
+`api.qrv.network` must not become a second website. It remains the trusted machine/data boundary.
+
+```text
+https://api.qrv.network
+/
+├── /healthz
+├── /readyz
+├── /version
+├── /metrics
+└── /api/v1
+    ├── /status
+    ├── GET /verify/{qrvid}
+    ├── GET /registry/{qrvid}
+    ├── GET /issuers
+    ├── GET /issuers/{issuerId}
+    ├── POST /certificates
+    ├── GET /certificates/{qrvid}
+    ├── PATCH /certificates/{qrvid}
+    ├── POST /certificates/{qrvid}/revoke
+    ├── POST /contact-cards
+    ├── GET /contact-cards/{qrvid}
+    ├── PATCH /contact-cards/{qrvid}
+    ├── POST /contact-cards/bulk
+    ├── GET /contact-cards/{qrvid}/vcard
+    ├── /analytics
+    ├── /audit
+    ├── /webhooks
+    └── /keys
+```
+
+This API tree is architectural intent. The normative exact API contract must come from the OpenAPI specification. Do not maintain a conflicting hand-written API specification.
+
+## Subdomain consolidation
+
+| Host | Production role |
 |---|---|
-| verify.qrv.network | qrv.network/verify |
-| registry.qrv.network | qrv.network/registry |
-| issuer.qrv.network | qrv.network/issuer |
-| docs.qrv.network | qrv.network/docs |
-| developers.qrv.network | qrv.network/developers |
-| explorer.qrv.network | qrv.network/registry or /explorer |
+| `qrv.network` | Canonical human-facing platform |
+| `api.qrv.network` | Canonical API/data authority |
+| `verify.qrv.network` | Redirect → `qrv.network/verify` |
+| `registry.qrv.network` | Redirect → `qrv.network/registry` |
+| `issuer.qrv.network` | Redirect → `qrv.network/issuer` |
+| `docs.qrv.network` | Redirect → `qrv.network/docs` |
+| `developers.qrv.network` | Redirect → `qrv.network/developers` |
+| `explorer.qrv.network` | Redirect → `qrv.network/registry` |
 
-## Production tiers
+Redirects execute before SPA/static handling so legacy hosts cannot become competing origins.
 
-**Tier 1:** /, /verify, /verify/{qrvid}, /issuer, /issuer/onboarding, /issuer/dashboard, /issuer/records, /registry, /developers, /docs, /products, /pricing, /security, /status, /support, /legal.
+## Production priority
 
-**Tier 2:** complete product, solution, developer, protocol, issuer-management, analytics, API-key, webhook and enterprise surfaces.
+### Tier 1 — release-blocking workflow surfaces
 
-**Tier 3:** deeper guides, tutorials, examples, downloads, educational resources and historical/changelog material.
+```text
+/
+/verify
+/verify/{qrvid}
+/issuer
+/issuer/onboarding
+/issuer/dashboard
+/issuer/records
+/registry
+/developers
+/docs
+/products
+/pricing
+/security
+/status
+/support
+/legal
+```
 
-## Readiness rule
+### Tier 2 — complete commercial and developer surface
 
-A route may exist before its capability is operational. Product capabilities must only be represented as operational when the workflow is implemented, integrated, documented, tested and repeatable. Route lifecycle: **scaffolded → integrated → tested → production**.
+Complete product, solution, developer, protocol, issuer-management, analytics, API-key, webhook, integration, billing, subscription, and enterprise surfaces.
 
-New QR-V codes must encode `https://qrv.network/verify/{QRVID}`.
+### Tier 3 — deeper educational/resource material
+
+Deeper guides, tutorials, examples, downloads, network/company content, historical material, and changelogs.
+
+## Readiness/versioning rule
+
+A defined route is not automatically an operational product capability.
+
+A capability may be represented as production only when it is:
+
+```text
+implemented
++ integrated
++ documented
++ tested
++ repeatable
+```
+
+Route lifecycle:
+
+```text
+scaffolded → integrated → tested → production
+```
+
+This rule prevents QR-V from accumulating attractive but nonfunctional pages and protects the distinction between architecture and production capability.
+
+## Machine-readable source of truth
+
+`config/routes.manifest.json` is the canonical machine-readable route/tier contract for the public platform. OpenAPI is the normative source of truth for the API endpoint contract.
+
+Validation:
+
+```bash
+npm run check:sitemap
+npm run validate:prod
+```
