@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "1.0.0",
+  "baseline": "2026-09-17",
+  "architecture": {
+    "publicPlatform": "https://qrv.network",
+    "apiAuthority": "https://api.qrv.network/api/v1",
+    "registryAuthority": "PostgreSQL",
+    "protocol": "QRVP-1",
+    "verificationStandard": "QVS-1.0"
+  },
+  "navigation": {
+    "primary": [
+      "Products",
+      "Solutions",
+      "Developers",
+      "Documentation",
+      "Pricing",
+      "About"
+    ],
+    "actions": [
+      "Verify Record",
+      "Issuer Login",
+      "Get Started"
+    ]
+  },
+  "lifecycleStates": [
+    "scaffolded",
+    "integrated",
+    "tested",
+    "production"
+  ],
+  "tiers": {
+    "1": [
+      "/",
+      "/verify",
+      "/verify/:qrvid",
+      "/issuer",
+      "/issuer/onboarding",
+      "/issuer/dashboard",
+      "/issuer/records",
+      "/registry",
+      "/developers",
+      "/docs",
+      "/products",
+      "/pricing",
+      "/security",
+      "/status",
+      "/support",
+      "/legal"
+    ],
+    "2": [
+      "/products/*",
+      "/solutions/*",
+      "/developers/*",
+      "/protocol/*",
+      "/issuer/analytics",
+      "/issuer/audit-log",
+      "/issuer/team",
+      "/issuer/api-keys",
+      "/issuer/webhooks",
+      "/issuer/integrations",
+      "/enterprise/*"
+    ],
+    "3": [
+      "/resources/*",
+      "/docs/examples",
+      "/docs/changelog",
+      "/network/changelog"
+    ]
+  },
+  "criticalRoutes": [
+    {
+      "route": "/verify/:qrvid",
+      "tier": 1,
+      "surface": "public",
+      "owner": "qrv-node",
+      "backend": "GET /api/v1/verify/{qrvid}",
+      "authentication": "public",
+      "protocol": "QRVP-1",
+      "standard": "QVS-1.0",
+      "requiredTests": [
+        "VERIFIED",
+        "REVOKED",
+        "EXPIRED",
+        "NOT_FOUND",
+        "UNAVAILABLE"
+      ]
+    },
+    {
+      "route": "/issuer/records/new",
+      "tier": 1,
+      "surface": "issuer",
+      "owner": "qrv-node",
+      "backend": "POST /api/v1/certificates",
+      "authentication": "issuer",
+      "protocol": "QRVP-1",
+      "standard": "QVS-1.0"
+    },
+    {
+      "route": "/registry/:qrvid",
+      "tier": 1,
+      "surface": "public",
+      "owner": "qrv-node",
+      "backend": "GET /api/v1/registry/{qrvid}",
+      "authentication": "public",
+      "protocol": "QRVP-1",
+      "standard": "QVS-1.0"
+    }
+  ],
+  "legacyRedirects": {
+    "verify.qrv.network": "/verify",
+    "registry.qrv.network": "/registry",
+    "issuer.qrv.network": "/issuer",
+    "docs.qrv.network": "/docs",
+    "developers.qrv.network": "/developers",
+    "explorer.qrv.network": "/registry"
+  },
+  "apiPolicy": {
+    "machineOriented": true,
+    "sourceOfTruth": "OpenAPI",
+    "operational": [
+      "/healthz",
+      "/readyz",
+      "/version",
+      "/metrics"
+    ],
+    "families": [
+      "status",
+      "verify",
+      "registry",
+      "issuers",
+      "certificates",
+      "contact-cards",
+      "analytics",
+      "audit",
+      "webhooks",
+      "keys"
+    ]
+  },
+  "qrEncodingTemplate": "https://qrv.network/verify/{QRVID}"
+}
