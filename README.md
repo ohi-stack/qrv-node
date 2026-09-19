@@ -70,6 +70,28 @@ SESSION_TTL_MS=43200000
 
 `QRV_PLATFORM_API_KEY` is server-to-server only and must never be exposed to browser JavaScript.
 
+## Canonical production information architecture
+
+The authoritative human-facing route contract is maintained in:
+
+```text
+docs/FULL_PRODUCTION_SITEMAP.md
+```
+
+The sitemap is implemented in three tiers. Tier 1 is the release-critical v1 surface; Tier 2 expands operational product, issuer, developer, and enterprise capabilities; Tier 3 adds deeper educational and resource content. A route must not be represented as an operational capability until its workflow is implemented, documented, tested, secure, and repeatable.
+
+Public header:
+
+```text
+Products · Solutions · Developers · Documentation · Pricing · About
+```
+
+Prominent actions:
+
+```text
+Verify Record · Issuer Login · Get Started
+```
+
 ## Canonical public URLs
 
 ```text
