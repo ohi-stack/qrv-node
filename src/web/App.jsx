@@ -18,6 +18,31 @@ import {
 import { QRV_CONFIG } from './config.js';
 import './styles.css';
 
+
+
+const qrCells = Array.from({ length: 169 }, (_, index) => {
+  const x = index % 13;
+  const y = Math.floor(index / 13);
+  const finder = (originX, originY) => {
+    const dx = x - originX;
+    const dy = y - originY;
+    return dx >= 0 && dx < 5 && dy >= 0 && dy < 5 && (dx === 0 || dx === 4 || dy === 0 || dy === 4 || (dx === 2 && dy === 2));
+  };
+  return finder(0, 0) || finder(8, 0) || finder(0, 8) || ((x * 7 + y * 11 + x * y) % 5 < 2 ? 1 : 0);
+});
+
+function QRMark() {
+  return (
+    <div className="qr-mark" aria-label="QR-V demo QR code">
+      <div className="qr-grid" aria-hidden="true">
+        {qrCells.map((filled, index) => <i className={filled ? 'filled' : ''} key={index} />)}
+      </div>
+      <span className="qr-sweep" aria-hidden="true" />
+      <span className="qr-check">✓</span>
+    </div>
+  );
+}
+
 const navGroups = [
   {
     label: 'Platform',
@@ -196,6 +221,7 @@ function LiveRecordCard() {
         <span>LIVE PUBLIC RECORD</span>
       </div>
       <div className="record-primary">
+        <QRMark />
         <div>
           <span className="record-label">QRVID</span>
           <strong>{QRV_CONFIG.demoQrvid}</strong>
@@ -234,6 +260,9 @@ export default function App() {
       <Header />
       <main>
         <section className="hero grid-surface">
+          <div className="hero-scan-beam" aria-hidden="true" />
+          <div className="hero-orbit hero-orbit-one" aria-hidden="true"><span /></div>
+          <div className="hero-orbit hero-orbit-two" aria-hidden="true"><span /></div>
           <div className="hero-beam beam-one" aria-hidden="true" />
           <div className="hero-beam beam-two" aria-hidden="true" />
           <div className="hero-orb orb-one" aria-hidden="true" />

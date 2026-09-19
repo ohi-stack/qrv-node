@@ -8,7 +8,7 @@
   "syncPolicy": "sites-source-consolidated-into-qrv-node",
   "siteSourceRoot": "sites/qrv-global-verification",
   "frontendSourceRoot": "src/web",
-  "visualSystem": "QR-V Sites 2026-09-17",
+  "visualSystem": "QR-V Sites 2026-09-19",
   "canonicalPublicRoutes": [
     "/",
     "/protocol",
@@ -51,5 +51,9 @@
     "Public verification behavior remains deterministic under QRVP-1 and QVS-1.0.",
     "A live record card may display VERIFIED only when the verification API returns VERIFIED."
   ],
-  "lastUpdated": "2026-09-17T15:51:00Z"
+  "lastUpdated": "2026-09-19T00:00:00Z",
+  "siteSourceCommit": "3ca2be27b40e2eb8eb47891beea7ff7bf9906e22",
+  "siteVersion": 11,
+  "siteVersionId": "appgprj_6a6bc4a21f848191913b5d346d0ae466~appgver_f302b9bb7e4c8191b25efcba2b2ed301",
+  "siteSyncStatus": "synced"
 }
