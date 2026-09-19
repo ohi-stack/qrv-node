@@ -63,6 +63,7 @@ APP_VERSION=1.0.0
 QRV_PLATFORM_ORIGIN=https://qrv.network
 QRV_API_BASE_URL=https://api.qrv.network/api/v1
 QRV_PLATFORM_API_KEY=
+QRV_ISSUER_ID=<issuer scope sent to qrv-api for writes>
 SESSION_SECRET=
 ISSUER_ACCESS_CODE=
 SESSION_TTL_MS=43200000
@@ -147,7 +148,23 @@ Issuer access fails closed until these are configured:
 SESSION_SECRET=
 ISSUER_ACCESS_CODE=
 QRV_PLATFORM_API_KEY=
+QRV_ISSUER_ID=
 ```
+
+## Activation evidence gate
+
+The guarded activation gate creates one real PostgreSQL-backed certificate through `qrv-api`, fetches the served SVG QR, verifies that it encodes the canonical `qrv.network/verify/{QRVID}` target, opens that target through the public platform and confirms `VERIFIED`, revokes the same QRVID, confirms `REVOKED` through the same target, checks issuer-scope isolation, and reads the audit trail. The record is intentionally retained in the revoked state as release evidence.
+
+```bash
+export QRV_ACTIVATION_PLATFORM_URL=https://qrv.network
+export QRV_ACTIVATION_API_URL=https://api.qrv.network
+export QRV_ACTIVATION_API_KEY=<server-side write key>
+export QRV_ACTIVATION_ISSUER_ID=<approved acceptance issuer>
+export QRV_ACTIVATION_CONFIRM=CREATE_AND_REVOKE_TEST_RECORD
+npm run test:activation
+```
+
+The command refuses to create a record without the explicit confirmation value and never prints credentials. It also checks the real API readiness schema and issuer-scoped signing `kid` before issuance.
 
 ## 30-day commercial priority
 
