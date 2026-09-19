@@ -7,7 +7,7 @@
   "scripts": {
     "build": "npm run build:web",
     "start": "node server.js",
-    "dev": "node --watch server.js",
+    "dev": "npm run build && node --watch server.js",
     "dev:web": "vite --host 0.0.0.0",
     "dev:chatgpt": "node scripts/dev-lane.mjs chatgpt-sites",
     "dev:aistudio": "node scripts/dev-lane.mjs google-ai-studio",
@@ -23,7 +23,9 @@
     "acceptance:live": "node scripts/live-acceptance.mjs",
     "validate:prod": "npm run check && npm run build && npm run check:dist && npm run test:routing"
   },
-  "engines": {"node": ">=20"},
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.1",
@@ -31,7 +33,8 @@
     "lucide-react": "^0.468.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

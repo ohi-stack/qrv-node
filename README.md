@@ -4,7 +4,7 @@
 
 ## ChatGPT Sites synchronization
 
-The public Site slug `qrv-global-verification` is the current source for the customer-facing QR-V presentation. The latest validated Site source is version 12 at commit `b551e69d9a797d18376315a8353e7521c07b175f`. Its complete public presentation is synchronized into `src/web/` while this repository preserves the Express platform runtime and the `qrv-api` security boundary.
+The public Site slug `qrv-global-verification` is the current source for the customer-facing QR-V presentation. The latest validated Site source is version 11 at commit `3ca2be27b40e2eb8eb47891beea7ff7bf9906e22`. Its public presentation is synchronized into `src/web/` while this repository preserves the Express platform runtime and the `qrv-api` security boundary.
 
 The canonical split remains:
 

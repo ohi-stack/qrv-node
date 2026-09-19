@@ -52,8 +52,8 @@
     "A live record card may display VERIFIED only when the verification API returns VERIFIED."
   ],
   "lastUpdated": "2026-09-19T00:00:00Z",
-  "siteSourceCommit": "b551e69d9a797d18376315a8353e7521c07b175f",
-  "siteVersion": 12,
-  "siteVersionId": "appgprj_6a6bc4a21f848191913b5d346d0ae466~appgver_e0e2264f7fe8819191d116965e67a985",
+  "siteSourceCommit": "3ca2be27b40e2eb8eb47891beea7ff7bf9906e22",
+  "siteVersion": 11,
+  "siteVersionId": "appgprj_6a6bc4a21f848191913b5d346d0ae466~appgver_f302b9bb7e4c8191b25efcba2b2ed301",
   "siteSyncStatus": "synced"
 }
