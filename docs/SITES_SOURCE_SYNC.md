@@ -4,9 +4,9 @@
 
 - Site slug: `qrv-global-verification`
 - Public origin: `https://qrv.network`
-- Current validated Site version: **11**
-- Site source commit: `3ca2be27b40e2eb8eb47891beea7ff7bf9906e22`
-- Site validation: `npm test` — 6 tests passed
+- Current validated Site version: **12**
+- Site source commit: `b551e69d9a797d18376315a8353e7521c07b175f`
+- Site validation: `npm test` — 7 tests passed
 
 ## Canonical repository mapping
 
@@ -16,7 +16,7 @@
 
 ## Synchronization scope
 
-The current Site baseline is represented in `src/web/`, including the QR-V header, navigation, verification-focused hero, public record card, trust/status treatments, responsive layout, and current motion system. The latest news slug normalization fix is preserved in the Site source and its source revision is recorded in `sites/qrv-global-verification/site.manifest.json`.
+The current Site baseline is represented in `src/web/`, including the QR-V header, multi-route navigation, verification-focused hero, public record card, trust/status treatments, news archive, responsive layout, and current motion system. The Node build keeps the Express verification, issuer, registry, health, readiness, and API boundaries authoritative while serving the Site presentation for public content routes. The source revision is recorded in `sites/qrv-global-verification/site.manifest.json`.
 
 ## Protected boundaries
 
