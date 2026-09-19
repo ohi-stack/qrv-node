@@ -16,9 +16,10 @@
     "check:dist": "node scripts/check-dist.mjs",
     "check:lanes": "node scripts/check-development-lanes.mjs",
     "check:sitemap": "node scripts/check-production-sitemap.mjs",
+    "check:tier1": "node scripts/check-tier1-runtime.mjs",
     "test:routing": "node scripts/test-spa-routing.mjs",
-    "lint": "node --check server.js && node --check scripts/live-acceptance.mjs && node --check scripts/test-spa-routing.mjs && node --check scripts/dev-lane.mjs && node --check scripts/check-development-lanes.mjs && node --check scripts/check-production-sitemap.mjs && node --check src/verification.js && node scripts/check-web.mjs",
-    "check": "npm run lint && npm run check:lanes && npm run check:sitemap",
+    "lint": "node --check server.js && node --check scripts/live-acceptance.mjs && node --check scripts/test-spa-routing.mjs && node --check scripts/dev-lane.mjs && node --check scripts/check-development-lanes.mjs && node --check scripts/check-production-sitemap.mjs && node --check scripts/check-tier1-runtime.mjs && node --check src/verification.js && node scripts/check-web.mjs",
+    "check": "npm run lint && npm run check:lanes && npm run check:sitemap && npm run check:tier1",
     "smoke": "node -e \"const base=process.env.QRV_NODE_URL||'http://127.0.0.1:3000'; Promise.all(['/healthz','/readyz','/version'].map(p=>fetch(base+p).then(async r=>({status:r.status,body:await r.json()})))).then(console.log)\"",
     "acceptance:live": "node scripts/live-acceptance.mjs",
     "validate:prod": "npm run check && npm run build && npm run check:dist && npm run test:routing"
