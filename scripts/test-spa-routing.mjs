@@ -52,13 +52,26 @@ try {
 
   await assertHtml('/', 'id="root"', 'Verify a QR-V record');
   await assertHtml('/protocol', 'id="root"');
+  await assertHtml('/products', 'id="root"');
   await assertHtml('/products/certificate-verification', 'id="root"');
   await assertHtml('/solutions/education', 'id="root"');
+  await assertHtml('/developers', 'id="root"');
+  await assertHtml('/docs', 'id="root"');
   await assertHtml('/docs/overview/what-is-qr-v', 'id="root"');
+  await assertHtml('/pricing', 'id="root"');
+  await assertHtml('/security', 'id="root"');
+  await assertHtml('/support', 'id="root"');
+  await assertHtml('/legal', 'id="root"');
 
   await assertHtml('/verify', 'Verify a QR-V record', 'id="root"');
   await assertHtml('/registry', 'Public Registry Lookup', 'id="root"');
   await assertHtml('/issuer', 'QR-V Issuer Portal', 'id="root"');
+  await assertHtml('/issuer/onboarding', 'Prepare an issuer workflow before production access.', 'id="root"');
+
+  const protectedRecords = await fetch(`${base}/issuer/records`, { headers: { accept: 'text/html' }, redirect: 'manual' });
+  if (protectedRecords.status !== 303 || protectedRecords.headers.get('location') !== '/issuer/login') {
+    throw new Error('/issuer/records must remain issuer-authenticated and redirect to /issuer/login without a valid session.');
+  }
 
   await assertJson('/healthz');
   await assertJson('/version');
@@ -88,7 +101,7 @@ try {
     throw new Error('issuer.qrv.network must redirect before SPA fallback.');
   }
 
-  console.log('QR-V Sites runtime convergence routing contract passed.');
+  console.log('QR-V Tier 1 runtime and Sites routing contract passed.');
 } finally {
   child.kill('SIGTERM');
 }
