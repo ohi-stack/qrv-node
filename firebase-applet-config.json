@@ -1,0 +1,12 @@
+{
+  "projectId": "qrv-registry",
+  "appId": "1:346256847415:web:786e2997f57fddd79a85b2",
+  "apiKey": "AIzaSyASi9WJpn9bMsZADGHZ2XCRpyFwAz6CtJM",
+  "authDomain": "qrv-registry.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-qrvnode-46a86465-01d1-45cc-b2a5-9af1bb63e312",
+  "storageBucket": "qrv-registry.firebasestorage.app",
+  "messagingSenderId": "346256847415",
+  "measurementId": "",
+  "oAuthClientId": "346256847415-7stq5mrri5o7ifugvmb8e3rh9qjappmp.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
+}

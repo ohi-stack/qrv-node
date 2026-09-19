@@ -17,6 +17,12 @@ import {
 } from 'lucide-react';
 import { QRV_CONFIG } from './config.js';
 import LiveActivityGraph from './components/LiveActivityGraph.jsx';
+import RecentVerificationHistory from './components/RecentVerificationHistory.jsx';
+import InspectorBookmarks from './components/InspectorBookmarks.jsx';
+import AuthModal from './components/AuthModal.jsx';
+import UserProfileModal from './components/UserProfileModal.jsx';
+import { auth, loginWithGoogle, logoutUser } from './firebase.js';
+import { onAuthStateChanged } from 'firebase/auth';
 import './styles.css';
 
 
@@ -145,6 +151,14 @@ function DesktopNav() {
 
 function Header() {
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsubscribe();
+  }, []);
 
   return (
     <>
@@ -156,6 +170,76 @@ function Header() {
         <div className="header-actions">
           <a className="header-link" href="/verify">Verify</a>
           <a className="header-issuer" href="/issuer">Become an Issuer</a>
+          {user ? (
+            <button
+              type="button"
+              id="header-user-btn"
+              onClick={() => setProfileModalOpen(true)}
+              title={`Signed in as ${user.displayName || user.email}. Click for profile and settings.`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(45, 215, 234, 0.1)',
+                border: '1px solid #1c5269',
+                borderRadius: '8px',
+                padding: '5px 12px',
+                color: '#2dd7ea',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  style={{ width: '18px', height: '18px', borderRadius: '50%' }}
+                />
+              ) : (
+                <span
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    background: '#2dd7ea',
+                    color: '#021828',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    fontWeight: 800
+                  }}
+                >
+                  {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                </span>
+              )}
+              <span>{user.displayName?.split(' ')[0] || 'Inspector'}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              id="header-signin-btn"
+              onClick={() => setAuthModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(45, 215, 234, 0.08)',
+                border: '1px solid #23657f',
+                borderRadius: '8px',
+                padding: '6px 14px',
+                color: '#2dd7ea',
+                fontSize: '12px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              Sign In
+            </button>
+          )}
           <button
             className="menu-button"
             type="button"
@@ -169,6 +253,71 @@ function Header() {
       </header>
       <div className={`mobile-menu${open ? ' open' : ''}`}>
         <div className="mobile-menu-inner">
+          {user ? (
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                background: 'rgba(45, 215, 234, 0.08)',
+                border: '1px solid #1c5269',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '14px'
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#f7f9fb' }}>
+                  {user.displayName || user.email}
+                </div>
+                <div style={{ fontSize: '11px', color: '#7ea4ba' }}>{user.email}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileModalOpen(true);
+                  setOpen(false);
+                }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  background: '#0e3a51',
+                  border: '1px solid #2dd7ea',
+                  color: '#2dd7ea',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Profile
+              </button>
+            </div>
+          ) : (
+            <div style={{ marginBottom: '14px' }}>
+              <button
+                type="button"
+                id="mobile-signin-btn"
+                onClick={() => {
+                  setAuthModalOpen(true);
+                  setOpen(false);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  background: 'rgba(45, 215, 234, 0.1)',
+                  border: '1px solid #2dd7ea',
+                  color: '#2dd7ea',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                Sign In / Register
+              </button>
+            </div>
+          )}
+
           {navGroups.map((group) => (
             <section key={group.label}>
               <p>{group.label}</p>
@@ -181,6 +330,17 @@ function Header() {
           </div>
         </div>
       </div>
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
+
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        user={user}
+      />
     </>
   );
 }
@@ -239,6 +399,7 @@ function LiveRecordCard() {
       <a className="record-link" href={`/verify/${encodeURIComponent(QRV_CONFIG.demoQrvid)}`}>
         Open registry result <ArrowUpRight size={16} aria-hidden="true" />
       </a>
+      <InspectorBookmarks currentQrvid={QRV_CONFIG.demoQrvid} currentStatus={state.status} />
     </article>
   );
 }
@@ -455,6 +616,7 @@ export default function App() {
               <a className="text-link" href="/status">View status <ArrowUpRight size={16} /></a>
             </div>
             <LiveActivityGraph />
+            <RecentVerificationHistory />
           </div>
         </section>
 
