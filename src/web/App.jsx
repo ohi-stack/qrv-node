@@ -21,6 +21,7 @@ import RecentVerificationHistory from './components/RecentVerificationHistory.js
 import InspectorBookmarks from './components/InspectorBookmarks.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import UserProfileModal from './components/UserProfileModal.jsx';
+import QRVCodeGenerator from './components/QRVCodeGenerator.jsx';
 import { auth, loginWithGoogle, logoutUser } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
 import './styles.css';
@@ -399,6 +400,7 @@ function LiveRecordCard() {
       <a className="record-link" href={`/verify/${encodeURIComponent(QRV_CONFIG.demoQrvid)}`}>
         Open registry result <ArrowUpRight size={16} aria-hidden="true" />
       </a>
+      <QRVCodeGenerator qrvid={QRV_CONFIG.demoQrvid} verificationState={state.status} />
       <InspectorBookmarks currentQrvid={QRV_CONFIG.demoQrvid} currentStatus={state.status} />
     </article>
   );
