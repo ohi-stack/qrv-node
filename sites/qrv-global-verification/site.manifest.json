@@ -51,9 +51,23 @@
     "Public verification behavior remains deterministic under QRVP-1 and QVS-1.0.",
     "A live record card may display VERIFIED only when the verification API returns VERIFIED."
   ],
-  "lastUpdated": "2026-09-19T00:00:00Z",
+  "lastUpdated": "2026-10-10",
   "siteSourceCommit": "3ca2be27b40e2eb8eb47891beea7ff7bf9906e22",
   "siteVersion": 11,
   "siteVersionId": "appgprj_6a6bc4a21f848191913b5d346d0ae466~appgver_f302b9bb7e4c8191b25efcba2b2ed301",
-  "siteSyncStatus": "synced"
+  "siteSyncStatus": "synced",
+  "conversationContentRevision": "2026-10-10",
+  "integrationRequirements": [
+    "Unified cryptographic security (SHA-256, Ed25519 key lifecycle release gate)",
+    "Selective field privacy and authorized disclosure",
+    "Open QRVP-1/QVS-1.0 schemas and OpenAPI contracts",
+    "REST/webhooks/SDK/CSV/Google Workspace interoperability without replacing registry authority"
+  ],
+  "conversationContentSources": [
+    "QR-V conversation: unified trust/security/privacy/open standards/integrations",
+    "qrv-marketing-site/sites/qrv-global-verification/site.manifest.json",
+    "qrv-marketing-site/src/App.jsx (historical Sites-backed marketing source)"
+  ],
+  "publicTrustSection": "src/web/components/TrustArchitecture.jsx",
+  "statusAndDeploymentNote": "Implementation branch pending review, CI, acceptance:live and release approval; source synchronization is not proof of production feature availability."
 }
