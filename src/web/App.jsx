@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { QRV_CONFIG } from './config.js';
 import LiveActivityGraph from './components/LiveActivityGraph.jsx';
+import TrustArchitecture from './components/TrustArchitecture.jsx';
 import RecentVerificationHistory from './components/RecentVerificationHistory.jsx';
 import InspectorBookmarks from './components/InspectorBookmarks.jsx';
 import AuthModal from './components/AuthModal.jsx';
@@ -40,7 +41,7 @@ const qrCells = Array.from({ length: 169 }, (_, index) => {
 
 function QRMark() {
   return (
-    <div className="qr-mark" aria-label="QR-V demo QR code">
+    <div className="qr-mark" aria-label="Illustrative QR pattern; not a scannable verification code">
       <div className="qr-grid" aria-hidden="true">
         {qrCells.map((filled, index) => <i className={filled ? 'filled' : ''} key={index} />)}
       </div>
@@ -358,7 +359,8 @@ function LiveRecordCard() {
         const payload = await response.json().catch(() => ({}));
         if (cancelled) return;
         const record = payload.record || payload;
-        const status = String(payload.status || payload.state || (response.status === 404 ? 'NOT_FOUND' : 'UNAVAILABLE')).toUpperCase();
+        const reportedStatus = String(payload.verificationState || payload.status || payload.state || '').toUpperCase();
+        const status = response.ok ? (['VERIFIED', 'REVOKED', 'EXPIRED', 'NOT_FOUND', 'INVALID_FORMAT', 'INVALID_SIGNATURE', 'SUSPENDED_ISSUER', 'UNAVAILABLE'].includes(reportedStatus) ? reportedStatus : 'UNAVAILABLE') : (response.status === 404 ? 'NOT_FOUND' : 'UNAVAILABLE');
         setState({
           status,
           issuer: record.issuer || record.issuerName || 'ONEGODIAN, LLC',
@@ -379,7 +381,7 @@ function LiveRecordCard() {
     <article className="live-record-card">
       <div className="live-record-heading">
         <span className={`live-dot${verified ? ' verified' : checking ? '' : ' warning'}`} />
-        <span>LIVE PUBLIC RECORD</span>
+        <span>PUBLIC RECORD LOOKUP</span>
       </div>
       <div className="record-primary">
         <QRMark />
@@ -432,22 +434,22 @@ export default function App() {
           <div className="page-shell hero-inner">
             <div className="hero-copy reveal">
               <p className="eyebrow cyan">GLOBAL VERIFICATION NETWORK</p>
-              <h1>Turn every<br />scan into proof.</h1>
+              <h1>Make records<br />verifiable.</h1>
               <p className="hero-lead">Registry-backed verification for certificates, credentials, documents, products, and digital records.</p>
               <div className="hero-actions">
                 <a className="button primary" href="/verify">Verify a Record</a>
                 <a className="button secondary" href="/issuer">Become an Issuer</a>
               </div>
               <div className="launch-line" aria-label="Public launch standards">
-                <span className="launch-status"><span className="pulse-dot" />PUBLIC LAUNCH</span>
+                <span className="launch-status"><span className="pulse-dot" />PRODUCTION ACTIVATION</span>
                 <span>QRVP-1</span>
                 <span>QVS-1.0</span>
               </div>
               <div className="trust-chips">
-                <StatusPill active>SHA-256 active</StatusPill>
-                <StatusPill>Ed25519 pending</StatusPill>
+                <StatusPill>SHA-256 integrity model</StatusPill>
+                <StatusPill>Ed25519 release gate</StatusPill>
                 <StatusPill>Canonical JSON</StatusPill>
-                <StatusPill>TLS 1.3</StatusPill>
+                <StatusPill>Selective privacy by policy</StatusPill>
               </div>
             </div>
             <LiveRecordCard />
@@ -458,13 +460,13 @@ export default function App() {
           <div className="page-shell">
             <div className="section-heading compact">
               <p className="eyebrow">Production topology</p>
-              <h2>Production services on one verified origin.</h2>
+              <h2>One public platform. One trusted API.</h2>
             </div>
             <div className="topology-grid">
               <article><span>01</span><div><h3>QR-V platform</h3><p>qrv.network</p><small>Public website and human workflows</small></div></article>
               <article><span>02</span><div><h3>Verification API</h3><p>api.qrv.network/api/v1</p><small>Trusted registry and machine operations</small></div></article>
               <article className="topology-proof"><BadgeCheck /><div><h3>Registry-backed</h3><p>Canonical source records</p></div></article>
-              <article className="topology-proof"><ShieldCheck /><div><h3>Cryptographic roadmap</h3><p>SHA-256 active · Ed25519 required</p></div></article>
+              <article className="topology-proof"><ShieldCheck /><div><h3>Cryptographic roadmap</h3><p>SHA-256 integrity · Ed25519 production gate</p></div></article>
               <article className="topology-proof"><Globe2 /><div><h3>Globally verifiable</h3><p>One scan, clear status</p></div></article>
             </div>
           </div>
@@ -474,7 +476,7 @@ export default function App() {
           <div className="page-shell">
             <div className="section-heading">
               <p className="eyebrow">What QR-V solves</p>
-              <h2>A QR code can point anywhere. QR-V establishes what is true.</h2>
+              <h2>A QR code points to a destination. QR-V checks the record behind it.</h2>
               <p>Each scan resolves to a canonical registry entry, validates the issuer, and checks the record’s current status and integrity.</p>
             </div>
             <div className="comparison-grid">
@@ -489,11 +491,13 @@ export default function App() {
                 <span className="card-number">02</span>
                 <h3>QR-V verification</h3>
                 <p>A structured reference backed by issuer identity, registry state, cryptographic integrity, and an auditable lifecycle.</p>
-                <ul><li>Known issuing authority</li><li>Deterministic status</li><li>Hash and signature checks</li></ul>
+                <ul><li>Issuer-authorized records</li><li>Deterministic lifecycle status</li><li>Integrity and signature gates</li></ul>
               </article>
             </div>
           </div>
         </section>
+
+        <TrustArchitecture />
 
         <section className="section checks-section">
           <div className="page-shell">
@@ -589,9 +593,9 @@ export default function App() {
               <a className="text-link" href="/pricing">View full pricing <ArrowRight size={16} /></a>
             </div>
             <div className="pricing-grid">
-              <article><span>Pilot</span><strong>$0 <small>/ limited</small></strong><p>Validate your first workflow with a controlled issuer pilot.</p></article>
-              <article className="selected"><span className="selected-label">Most selected</span><span>Starter</span><strong>$49 <small>/ month</small></strong><p>Issuer Portal access for up to 1,000 managed records.</p></article>
-              <article><span>Professional</span><strong>$299 <small>/ month</small></strong><p>Team controls, API access, and up to 25,000 records.</p></article>
+              <article><span>Pilot</span><strong>Pilot <small>/ by approval</small></strong><p>Validate your first workflow with a controlled issuer pilot.</p></article>
+              <article className="selected"><span className="selected-label">Issuer tier</span><span>Starter</span><strong>Contact <small>/ for current pricing</small></strong><p>Issuer Portal access for up to 1,000 managed records.</p></article>
+              <article><span>Professional</span><strong>Custom <small>/ quoted terms</small></strong><p>Team controls, API access, and up to 25,000 records.</p></article>
             </div>
           </div>
         </section>
@@ -604,7 +608,7 @@ export default function App() {
               <p>Integrate QR-V through deterministic REST responses, documented statuses, issuer APIs, and the QRVP-1 protocol model.</p>
               <a className="button secondary" href="/developers">Open developer portal</a>
             </div>
-            <pre className="code-card"><code>{`GET https://qrv.network/api/v1/verify/${QRV_CONFIG.demoQrvid}\n\n{\n  "status": "VERIFIED",\n  "integrity": {\n    "hashValid": true,\n    "signatureState": "PENDING_ED25519"\n  }\n}`}</code></pre>
+            <pre className="code-card"><code>{`GET https://api.qrv.network/api/v1/verify/${QRV_CONFIG.demoQrvid}\n\n{\n  "status": "VERIFIED",\n  "integrity": {\n    "hashValid": true,\n    "signatureState": "PENDING_ED25519"\n  }\n}`}</code></pre>
           </div>
         </section>
 
