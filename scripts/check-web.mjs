@@ -4,6 +4,7 @@ const required = [
   'src/web/index.html',
   'src/web/main.jsx',
   'src/web/App.jsx',
+  'src/web/components/TrustArchitecture.jsx',
   'src/web/config.js',
   'src/web/styles.css',
   'src/web/public/qrv-logo.svg',
@@ -30,11 +31,11 @@ const sitemap = readFileSync('src/web/public/sitemap.xml', 'utf8');
 const server = readFileSync('server.js', 'utf8');
 
 const requiredAppTerms = [
-  'Turn every',
-  'scan into proof.',
+  'Make records',
+  'verifiable.',
   'GLOBAL VERIFICATION NETWORK',
-  'LIVE PUBLIC RECORD',
-  'PUBLIC LAUNCH',
+  'PUBLIC RECORD LOOKUP',
+  'PRODUCTION ACTIVATION',
   'Issuer Portal',
   'Verified certificates first.',
   '/verify',
@@ -42,7 +43,8 @@ const requiredAppTerms = [
   '/registry',
   '/developers',
   '/docs',
-  '/status'
+  '/status',
+  '<TrustArchitecture />'
 ];
 
 for (const term of requiredAppTerms) {
