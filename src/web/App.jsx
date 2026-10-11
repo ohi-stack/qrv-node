@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { QRV_CONFIG } from './config.js';
 import LiveActivityGraph from './components/LiveActivityGraph.jsx';
-import RecentVerificationHistory from './components/RecentVerificationHistory.jsx';
+
 import InspectorBookmarks from './components/InspectorBookmarks.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import UserProfileModal from './components/UserProfileModal.jsx';
@@ -616,7 +616,7 @@ export default function App() {
               <a className="text-link" href="/status">View status <ArrowUpRight size={16} /></a>
             </div>
             <LiveActivityGraph />
-            <RecentVerificationHistory />
+            <p className="text-muted" role="status">Canonical verification audit events are available to authorized issuers through the registry API. No unverified public history feed is displayed.</p>
           </div>
         </section>
 
