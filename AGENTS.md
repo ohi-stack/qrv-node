@@ -117,3 +117,16 @@ main
       ↓
 production deployment and live acceptance
 ```
+
+## October 2026 production evidence gates
+
+Read `docs/PRODUCTION_CONSOLIDATION_2026-10-11.md` and `docs/PRODUCTION_BLOCKERS_2026-10-11.md` before promotion.
+
+- Never seed demo verification histories or generate pseudo-random analytics as if they were live traffic.
+- Browser-authenticated Firebase users are not automatically authorized issuers.
+- `qrv-node` pilot access code is not production multi-tenant identity; require API-side issuer scope and cross-tenant negative tests.
+- `api.qrv.network` must return canonical JSON from `ohi-stack/qrv-api`. Login page HTML or edge 404 fails acceptance.
+- No client-side, WordPress or Firestore write may masquerade as a canonical registry/audit event.
+- No Ed25519 operational claim before signed-record negative tests and independent key lifecycle evidence.
+- Keep public verification payloads minimal; the trusted API must enforce per-record privacy.
+- A PR or local code edit is not a live deployment and should not be recorded as such.
