@@ -1,133 +1,42 @@
-# QRV Network Root Node — Production Command
+# QR-V™ Production Command — Canonical Runtime
 
-Date: 2026-06-06
-Repository: `ohi-stack/qrv-node`
-Production domain: `https://qrv.network`
+**Updated:** October 11, 2026  
+**Repository:** `ohi-stack/qrv-node`  
+**Scope:** Public application at `qrv.network`; machine/data API at `api.qrv.network`.  
+**Status:** Production convergence / blocked pending the [release gates](docs/PRODUCTION_SKILLS_AND_RELEASE_GATES.md).
 
-## Production Objective
+> This replaces the historical June 6 subdomain-as-separate-app plan and version 0.2.0 snapshot. Do not republish that old topology as current.
 
-Set the QRV Network root node as the consolidated public entry point for QR-V™, while preserving service separation for registry, issuer, verification, API, wallet, docs, and status operations.
+## Architecture and responsibility
 
-## Current Verified Repository Facts
-
-- Package name: `qrv-node`
-- Current version: `0.2.0`
-- Runtime: Node.js, ES modules
-- Entry point: `server.js`
-- Required engine: Node `>=20`
-- Current scripts: `start`, `dev`, `check`, `smoke`
-- Express is the runtime dependency.
-
-## Production Routing Standard
-
-The root node should expose public marketing, navigation, consolidation, and routing pages at `qrv.network`.
-
-Required public routes:
-
-- `/`
-- `/about`
-- `/how-it-works`
-- `/protocol`
-- `/use-cases`
-- `/pricing`
-- `/issuer`
-- `/demo`
-- `/developers`
-- `/docs`
-- `/docs/overview`
-- `/docs/protocol`
-- `/docs/verification`
-- `/docs/registry`
-- `/docs/issuers`
-- `/docs/developers`
-- `/docs/api-reference`
-- `/registry`
-- `/security`
-- `/wallet`
-- `/status`
-- `/contact`
-- `/terms`
-- `/privacy`
-- `/verification-disclaimer`
-
-Required operational endpoints:
-
-- `/health`
-- `/healthz`
-- `/readyz`
-- `/version`
-- `/manifest.json`
-- `/sitemap.xml`
-- `/robots.txt`
-
-## Service Mapping
-
-Keep these as separate production services unless intentionally consolidated later:
-
-- `https://registry.qrv.network` — canonical registry and record storage
-- `https://verify.qrv.network` — public verification portal
-- `https://issuer.qrv.network` — issuer onboarding and credential issuance workflows
-- `https://api.qrv.network` — public/API gateway
-- `https://wallet.qrv.network` or `/wallet` — wallet interface depending on deployment readiness
-- `https://docs.qrv.network` or `/docs` — documentation surface; canonical public docs should also resolve under `/docs`
-
-## Production Environment Variables
-
-Create or confirm these in Hostinger / deployment environment:
-
-```env
-NODE_ENV=production
-PORT=3000
-SERVICE_NAME=qrv-node
-SERVICE_VERSION=0.2.0
-PUBLIC_BASE_URL=https://qrv.network
-VERIFY_BASE_URL=https://verify.qrv.network
-REGISTRY_BASE_URL=https://registry.qrv.network
-ISSUER_BASE_URL=https://issuer.qrv.network
-API_BASE_URL=https://api.qrv.network
-DOCS_BASE_URL=https://qrv.network/docs
-WALLET_BASE_URL=https://qrv.network/wallet
-STATUS_BASE_URL=https://qrv.network/status
-LOG_LEVEL=info
+```text
+qrv.network (qrv-node / public React + Express)
+  → server-to-server HTTPS
+api.qrv.network (qrv-api / JSON, auth, verified registry)
+  → canonical PostgreSQL (issuer, record, hash, signature, audit, revocation)
 ```
 
-## Required Production Files
+`qrv-node` owns `/verify/*`, `/issuer/*`, `/wallet/*`, `/registry/*`, `/explorer/*`, `/docs`, `/developers`, `/pricing`, `/status`, and public information routes. The Express runtime retains control of server-owned paths. Legacy `verify.`, `issuer.`, `registry.`, `wallet.`, `docs.`, `explorer.`, and `developers.` origins are compatibility redirects **after** acceptance. A public QR contains `https://qrv.network/verify/{QRVID}`.
 
-Confirm these files exist and are current:
+Do **not** put `DATABASE_URL`, signing private keys, master API keys, admin database credentials, Stripe secrets or `SUPABASE_SECRET_KEY` into `qrv-node` or browser-visible `VITE_*` values. `QRV_PLATFORM_API_KEY` is server-side only and is approved solely for appropriate API-to-API access. Explicit user identity, RBAC, CSRF and session checks remain mandatory.
 
-- `package.json`
-- `server.js`
-- `.env.example`
-- `README.md`
-- `DEPLOYMENT.md`
-- `PRODUCTION_COMMAND.md`
+## Production install, validation and launch
 
-## Deployment Checklist
+```bash
+npm install --no-audit --no-fund
+npm run check:skills
+npm run validate:prod
+npm audit --omit=dev --audit-level=high
+# human-approved production environment only:
+npm run acceptance:live
+```
 
-1. Run `npm install`.
-2. Run `npm run check`.
-3. Run `npm start` locally with production-like environment variables.
-4. Run smoke checks against:
-   - `/healthz`
-   - `/readyz`
-   - `/version`
-   - `/manifest.json`
-5. Deploy to Hostinger Node environment.
-6. Confirm HTTPS domain binding for `qrv.network`.
-7. Confirm reverse proxy points to the correct `PORT`.
-8. Confirm all service links resolve correctly.
-9. Confirm QR-V verification disclaimer is publicly accessible.
-10. Record deployment date, commit SHA, and active environment in `DEPLOYMENT.md`.
+For deployment, bind Hostinger app 1 to `ohi-stack/qrv-node` at `qrv.network`, and app 2 to `ohi-stack/qrv-api` at `api.qrv.network`. Confirm both deployed SHAs, runtime-port handling, Node 20+/22, and correct API JSON health/readiness before executing a database-backed acceptance run. **Do not merge or deploy** if any mandatory check is red.
 
-## Definition of Done
+Current `main` package baseline at this update is `1.3.0-rc.1`. It is not evidence of production acceptance. The October 11 live acceptance run failed and high-severity Firebase chain findings remain tracked in [issue #49](https://github.com/ohi-stack/qrv-node/issues/49). There is currently no npm lockfile: investigate compatible dependency remediation and produce an npm-compatible reproducible lockfile before switching to `npm ci`.
 
-This repository is production-ready when:
+## Product acceptance
 
-- The root domain loads without build/runtime errors.
-- Health, readiness, and version endpoints respond successfully.
-- All public pages render QR-V production content.
-- `/docs` resolves without needing a separate docs subdomain.
-- `/wallet` exists as either a live wallet surface or a clearly marked coming-soon route connected to the wallet repository.
-- Registry, issuer, verification, and API service links route to the correct subdomains.
-- Sitemap, robots, and manifest metadata exist.
-- Deployment notes identify the active production commit.
+An authorized issuer must issue a real certificate, persist it in PostgreSQL, obtain QRVID and a public QR URL, receive VERIFIED through qrv-api, revoke the same record, receive REVOKED on public and API views, and retain audit evidence. Invalid/expired/unknown/signature-failed/private states must be tested. Wallet receives references and re-verifies them; it is not a second registry.
+
+Use [12 engineering skills](skills/qrv/README.md), [gate criteria](docs/PRODUCTION_SKILLS_AND_RELEASE_GATES.md) and the [current failure matrix](docs/PRODUCTION_ACCEPTANCE_FAILURE_2026-10-11.md). Release requires independent QA, backup/restore rehearsal, rollback path and human approval. Every release claim includes exact deployed SHA and evidence URL.
