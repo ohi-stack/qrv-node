@@ -46,6 +46,8 @@ jobs:
           QRV_PLATFORM_API_KEY=ci-platform-key \
           SESSION_SECRET=ci-session-secret \
           ISSUER_ACCESS_CODE=ci-access-code \
+          QRV_PLATFORM_ISSUER_ID=ci-test-issuer \
+          QRV_PLATFORM_ISSUER_NAME='CI Test Issuer' \
           npm start > /tmp/qrv-node.log 2>&1 &
           echo $! > /tmp/qrv-node.pid
           sleep 3
