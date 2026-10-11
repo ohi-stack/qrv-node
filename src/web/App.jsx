@@ -355,17 +355,25 @@ function LiveRecordCard() {
         const response = await fetch(`/api/v1/verify/${encodeURIComponent(QRV_CONFIG.demoQrvid)}`, {
           headers: { accept: 'application/json' }
         });
-        const payload = await response.json().catch(() => ({}));
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('json') || (!response.ok && response.status !== 404)) {
+          throw new Error('Canonical API returned an invalid or unavailable verification response');
+        }
+        const payload = await response.json();
         if (cancelled) return;
         const record = payload.record || payload;
-        const status = String(payload.status || payload.state || (response.status === 404 ? 'NOT_FOUND' : 'UNAVAILABLE')).toUpperCase();
+        const claimedState = String(payload.state || payload.status || '').toUpperCase();
+        const status = (
+          (response.ok && ['VERIFIED', 'REVOKED', 'EXPIRED'].includes(claimedState)) ||
+          (response.status === 404 && claimedState === 'NOT_FOUND')
+        ) ? claimedState : 'UNAVAILABLE';
         setState({
           status,
-          issuer: record.issuer || record.issuerName || 'ONEGODIAN, LLC',
+          issuer: status === 'UNAVAILABLE' ? 'Unavailable' : (record.issuer || record.issuerName || 'Not supplied'),
           integrity: status === 'VERIFIED' ? 'Hash registered · Ed25519 pending' : status === 'CHECKING' ? 'Checking registry…' : 'Current registry state available on verification page'
         });
       } catch {
-        if (!cancelled) setState({ status: 'UNAVAILABLE', issuer: 'ONEGODIAN, LLC', integrity: 'Verification API unavailable' });
+        if (!cancelled) setState({ status: 'UNAVAILABLE', issuer: 'Unavailable', integrity: 'Verification API unavailable' });
       }
     };
     run();
@@ -458,14 +466,14 @@ export default function App() {
           <div className="page-shell">
             <div className="section-heading compact">
               <p className="eyebrow">Production topology</p>
-              <h2>Production services on one verified origin.</h2>
+              <h2>One public platform and one canonical API.</h2>
             </div>
             <div className="topology-grid">
               <article><span>01</span><div><h3>QR-V platform</h3><p>qrv.network</p><small>Public website and human workflows</small></div></article>
               <article><span>02</span><div><h3>Verification API</h3><p>api.qrv.network/api/v1</p><small>Trusted registry and machine operations</small></div></article>
               <article className="topology-proof"><BadgeCheck /><div><h3>Registry-backed</h3><p>Canonical source records</p></div></article>
               <article className="topology-proof"><ShieldCheck /><div><h3>Cryptographic roadmap</h3><p>SHA-256 active · Ed25519 required</p></div></article>
-              <article className="topology-proof"><Globe2 /><div><h3>Globally verifiable</h3><p>One scan, clear status</p></div></article>
+              <article className="topology-proof"><Globe2 /><div><h3>Globally verifiable</h3><p>Public verification when registry service is ready</p></div></article>
             </div>
           </div>
         </section>
@@ -489,7 +497,7 @@ export default function App() {
                 <span className="card-number">02</span>
                 <h3>QR-V verification</h3>
                 <p>A structured reference backed by issuer identity, registry state, cryptographic integrity, and an auditable lifecycle.</p>
-                <ul><li>Known issuing authority</li><li>Deterministic status</li><li>Hash and signature checks</li></ul>
+                <ul><li>Issuer recorded by registry</li><li>Deterministic status when API is ready</li><li>SHA-256 integrity; Ed25519 pending</li></ul>
               </article>
             </div>
           </div>
@@ -570,11 +578,11 @@ export default function App() {
             <div className="issuer-copy">
               <p className="eyebrow">Issuer operations</p>
               <h2>Issue, manage, and revoke from one accountable workflow.</h2>
-              <p>Approved organizations receive a controlled workspace for certificates, QR codes, records, analytics, team access, API keys, and audit history.</p>
+              <p>The founding issuer pilot provides a controlled record workflow. Multi-issuer roles, reporting and billing controls remain gated until backend acceptance.</p>
               <ul className="feature-list">
                 <li><Check />Structured record issuance</li>
                 <li><Check />Instant QRVID generation</li>
-                <li><Check />Role-based team controls</li>
+                <li><Check />Pilot issuer controls (multi-tenant roles pending)</li>
                 <li><Check />Lifecycle and revocation management</li>
               </ul>
               <a className="text-link" href="/issuer">Explore issuer access <ArrowUpRight size={16} /></a>
