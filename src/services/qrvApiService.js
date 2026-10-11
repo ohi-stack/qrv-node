@@ -150,47 +150,19 @@ export class QRVApiService {
   }
 
   /**
-   * Retrieve recent verification activity and request counts.
-   * Pulls from the canonical metrics API if available, or produces high-fidelity
-   * activity time-series data for live monitoring.
-   * @returns {Promise<Array<{ time: string, timestamp: number, verifications: number, success: number, revoked: number, latency: number }>>}
+   * Fetch measured verification activity from the canonical backend.
+   * Never manufacture production counts, ratios, latency, or revocation data.
+   * Throws when telemetry is not available so callers can show an unavailable state.
    */
   async getVerificationActivity() {
-    // Attempt upstream metrics endpoint first
-    const upstream = await this.request('/metrics/activity').catch(() => null);
-    if (upstream?.ok && Array.isArray(upstream.data?.activity)) {
-      return upstream.data.activity;
+    const upstream = await this.request('/metrics/activity');
+    if (!upstream.ok || !Array.isArray(upstream.data?.activity)) {
+      throw new Error('Canonical verification telemetry is unavailable');
     }
-
-    // High-fidelity fallback / baseline recent request counts for live activity visualization
-    const now = Date.now();
-    const intervals = 12; // 12 five-minute periods = last 1 hour
-    const activity = [];
-
-    for (let i = intervals - 1; i >= 0; i--) {
-      const timeOffset = i * 5 * 60 * 1000;
-      const pointTime = new Date(now - timeOffset);
-      const hourStr = pointTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      // Deterministic pseudo-random variation based on timestamp
-      const seed = Math.sin((now - timeOffset) / 100000);
-      const baseRequests = 42 + Math.floor(Math.abs(seed) * 38); // 42 to 80 verifications per 5m
-      const successRatio = 0.94 + Math.abs(seed) * 0.05;
-      const successCount = Math.floor(baseRequests * successRatio);
-      const revokedCount = Math.max(0, baseRequests - successCount);
-      const avgLatency = Math.round(18 + Math.abs(seed) * 14); // 18ms - 32ms
-
-      activity.push({
-        time: hourStr,
-        timestamp: pointTime.getTime(),
-        verifications: baseRequests,
-        success: successCount,
-        revoked: revokedCount,
-        latency: avgLatency
-      });
-    }
-
-    return activity;
+    return upstream.data.activity.filter((point) =>
+      point && Number.isFinite(point.verifications) &&
+      Number.isFinite(point.success) && Number.isFinite(point.latency)
+    );
   }
 }
 

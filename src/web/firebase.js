@@ -234,69 +234,13 @@ export function subscribeUserBookmarks(userId, onUpdate, onError) {
   );
 }
 
-const INITIAL_VERIFICATION_SEEDS = [
-  { recordId: 'vr-101', qrvid: 'QRV-1001-DEMO', status: 'VALID', issuer: 'ONEGODIAN, LLC', latencyMs: 22, resolvedBy: 'qrv-node-us-east1', minutesAgo: 2 },
-  { recordId: 'vr-102', qrvid: 'QRV-9942-CRED', status: 'VALID', issuer: 'Apex Credentials Ltd', latencyMs: 19, resolvedBy: 'qrv-node-us-east1', minutesAgo: 5 },
-  { recordId: 'vr-103', qrvid: 'QRV-8821-CERT', status: 'VALID', issuer: 'Global Cert Authority', latencyMs: 27, resolvedBy: 'qrv-node-us-east1', minutesAgo: 8 },
-  { recordId: 'vr-104', qrvid: 'QRV-7733-REVOKED', status: 'REVOKED', issuer: 'FinTech Compliance Vault', latencyMs: 31, resolvedBy: 'qrv-node-us-east1', minutesAgo: 12 },
-  { recordId: 'vr-105', qrvid: 'QRV-5512-ACAD', status: 'VALID', issuer: 'Polytechnic Institute', latencyMs: 18, resolvedBy: 'qrv-node-us-east1', minutesAgo: 16 },
-  { recordId: 'vr-106', qrvid: 'QRV-4420-ASSET', status: 'VALID', issuer: 'Maritime Registry Intl', latencyMs: 25, resolvedBy: 'qrv-node-us-east1', minutesAgo: 21 },
-  { recordId: 'vr-107', qrvid: 'QRV-3319-DOCU', status: 'VALID', issuer: 'Secure Doc Exchange', latencyMs: 20, resolvedBy: 'qrv-node-us-east1', minutesAgo: 26 },
-  { recordId: 'vr-108', qrvid: 'QRV-2204-BAD', status: 'NOT_FOUND', issuer: 'Unknown Gateway', latencyMs: 35, resolvedBy: 'qrv-node-us-east1', minutesAgo: 32 },
-  { recordId: 'vr-109', qrvid: 'QRV-1199-IDEN', status: 'VALID', issuer: 'Civic Trust Network', latencyMs: 23, resolvedBy: 'qrv-node-us-east1', minutesAgo: 38 },
-  { recordId: 'vr-110', qrvid: 'QRV-0082-EXP', status: 'EXPIRED', issuer: 'Industrial Standard Corp', latencyMs: 28, resolvedBy: 'qrv-node-us-east1', minutesAgo: 45 }
-];
-
-/**
- * Seed verification records if collection is empty
- */
-export async function seedInitialVerificationsIfEmpty() {
-  const collectionPath = 'verification_history';
-  try {
-    const existing = await getDocs(query(collection(db, collectionPath), limit(1)));
-    if (!existing.empty) return;
-
-    const now = Date.now();
-    for (const seed of INITIAL_VERIFICATION_SEEDS) {
-      const timestamp = new Date(now - seed.minutesAgo * 60 * 1000).toISOString();
-      const docPath = `${collectionPath}/${seed.recordId}`;
-      await setDoc(doc(db, docPath), {
-        recordId: seed.recordId,
-        qrvid: seed.qrvid,
-        status: seed.status,
-        issuer: seed.issuer,
-        latencyMs: seed.latencyMs,
-        resolvedBy: seed.resolvedBy,
-        timestamp
-      });
-    }
-  } catch (err) {
-    console.warn('Initial verification seed skipped or permission restricted:', err?.message || err);
-  }
-}
-
 /**
  * Record a new verification resolution in Firestore
  */
-export async function recordVerificationEvent({ qrvid, status, issuer, latencyMs = 24 }) {
-  const recordId = `vr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  const path = `verification_history/${recordId}`;
-  const payload = {
-    recordId,
-    qrvid,
-    status: ['VALID', 'REVOKED', 'NOT_FOUND', 'EXPIRED', 'PENDING'].includes(status) ? status : 'VALID',
-    issuer: issuer || 'ONEGODIAN, LLC',
-    timestamp: new Date().toISOString(),
-    latencyMs: Number(latencyMs) || 20,
-    resolvedBy: 'qrv-node-us-east1'
-  };
-
-  try {
-    await setDoc(doc(db, path), payload);
-    return payload;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.CREATE, path);
-  }
+export async function recordVerificationEvent() {
+  // Canonical audit events must be written by the authorized registry backend.
+  // An unauthenticated browser event is not evidence of a valid verification.
+  throw new Error('Verification audit events are recorded by the canonical QR-V API');
 }
 
 /**
@@ -307,9 +251,6 @@ export async function recordVerificationEvent({ qrvid, status, issuer, latencyMs
 export async function getRecentVerifications(limitCount = 10) {
   const path = 'verification_history';
   try {
-    // Attempt auto-seed if first query
-    await seedInitialVerificationsIfEmpty();
-
     const q = query(
       collection(db, path),
       orderBy('timestamp', 'desc'),
@@ -331,9 +272,6 @@ export async function getRecentVerifications(limitCount = 10) {
  */
 export function subscribeRecentVerifications(onUpdate, onError, limitCount = 10) {
   const path = 'verification_history';
-  // Trigger seeding non-blocking
-  seedInitialVerificationsIfEmpty().catch(() => {});
-
   const q = query(
     collection(db, path),
     orderBy('timestamp', 'desc'),

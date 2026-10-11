@@ -1,10 +1,11 @@
 const platformBase = (process.env.QRV_NODE_URL || "https://qrv.network").replace(/\/$/, "");
 const apiBase = (process.env.QRV_API_URL || "https://api.qrv.network").replace(/\/$/, "");
 const legacyVerifyBase = (process.env.QRV_LEGACY_VERIFY_URL || "https://verify.qrv.network").replace(/\/$/, "");
-const demoQrvid = process.env.QRV_DEMO_QRVID || "QRV-PROD-CERT-000001";
+const demoQrvid = process.env.QRV_DEMO_QRVID || process.env.QRV_CANONICAL_QRVID || "QRV-PROD-CERT-000001";
 const unknownQrvid = process.env.QRV_UNKNOWN_QRVID || "QRV-PROD-CERT-DOES-NOT-EXIST";
 const malformedQrvid = process.env.QRV_MALFORMED_QRVID || "NOT-A-QRVID";
 const timeoutMs = Number(process.env.QRV_ACCEPTANCE_TIMEOUT_MS || 10000);
+const requireLegacyRedirect = process.env.QRV_REQUIRE_LEGACY_REDIRECT === '1';
 
 const desktopUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15";
 const mobileUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1";
@@ -60,7 +61,7 @@ async function runCheck(check) {
   const startedAt = Date.now();
   try {
     const response = await fetch(check.url, {
-      redirect: "follow",
+      redirect: "manual",
       headers: {
         "user-agent": check.userAgent || "qrv-two-node-acceptance/4.0",
         "cache-control": "no-cache",
@@ -83,13 +84,15 @@ async function runCheck(check) {
     const excludesForbidden = (check.forbids || []).every((value) => !body.toUpperCase().includes(String(value).toUpperCase()));
     const originMatches = !check.expectOrigin || new URL(response.url).origin === check.expectOrigin;
     const hasServerFailure = !check.allowStatus?.includes(response.status) && response.status >= 500;
-    const passed = allowedStatus && isExpectedType && containsExpected && excludesForbidden && originMatches && !hasServerFailure;
+    const loginRedirect = [301, 302, 303, 307, 308].includes(response.status) && /\/login(?:\?|$)/i.test(response.headers.get("location") || "");
+    const passed = allowedStatus && isExpectedType && containsExpected && excludesForbidden && originMatches && !hasServerFailure && !loginRedirect;
     const failures = [];
     if (!allowedStatus) failures.push(`status=${response.status}${check.expectStatus !== undefined ? ` expected=${check.expectStatus}` : ""}`);
     if (!isExpectedType) failures.push(`content-type=${contentType || "unknown"}`);
     if (!containsExpected) failures.push("expected response marker missing");
     if (!excludesForbidden) failures.push("stale homepage marker detected");
     if (!originMatches) failures.push(`final-origin=${new URL(response.url).origin}`);
+    if (loginRedirect) failures.push(`API incorrectly redirected to login (${response.headers.get("location")})`);
     if (hasServerFailure) failures.push("server failure detected");
     return {
       name: check.name,
@@ -160,7 +163,8 @@ async function runLegacyRedirectCheck() {
 
 const results = [];
 for (const check of checks) results.push(await runCheck(check));
-results.push(await runLegacyRedirectCheck());
+if (requireLegacyRedirect) results.push(await runLegacyRedirectCheck());
+else console.log("Legacy verify-subdomain acceptance is intentionally not required; set QRV_REQUIRE_LEGACY_REDIRECT=1 if legacy QR codes are in circulation.");
 
 const desktopRoot = results.find((result) => result.name === "platform-root-desktop");
 const mobileRoot = results.find((result) => result.name === "platform-root-mobile");
@@ -187,6 +191,7 @@ console.log(JSON.stringify({
   platformBase,
   apiBase,
   legacyVerifyBase,
+  requireLegacyRedirect,
   demoQrvid,
   unknownQrvid,
   malformedQrvid,
