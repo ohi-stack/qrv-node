@@ -1,0 +1,21 @@
+{
+  "name": "qrv-marketing-site",
+  "version": "1.4.1",
+  "private": true,
+  "type": "module",
+  "description": "Canonical public website source for the QR-V Global Verification Network, including synchronized ChatGPT Sites source from qrv-global-verification.",
+  "scripts": {
+    "dev": "node server.js",
+    "check": "node scripts/check.mjs && node scripts/verify-sites-source.mjs",
+    "sites:check": "node scripts/verify-sites-source.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/source-only-start.mjs",
+    "preview:start": "QRV_ALLOW_SOURCE_PREVIEW=1 node scripts/source-only-start.mjs",
+    "validate:prod": "npm run check && npm run build"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20"
+  }
+}
