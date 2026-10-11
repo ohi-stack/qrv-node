@@ -1,0 +1,166 @@
+{
+  "sourceRepository": "ohi-stack/qrv-marketing-site",
+  "sourceCommit": "b0660af958a1a3ba3be0df036e671a25ed4d5647",
+  "sourceTreeSha": "b0660af958a1a3ba3be0df036e671a25ed4d5647",
+  "destinationRepository": "ohi-stack/qrv-node",
+  "destinationSourceRoot": "sites/imports/qrv-marketing-site",
+  "snapshotDate": "2026-10-11",
+  "siteSlug": "qrv-global-verification",
+  "manifestSiteVersion": 12,
+  "manifestSiteVersionId": "appgprj_6a6bc4a21f848191913b5d346d0ae466~appgver_e0e2264f7fe8819191d116965e67a985",
+  "manifestSiteSourceCommit": "b551e69d9a797d18376315a8353e7521c07b175f",
+  "trackedSourceFileCount": 30,
+  "mode": "reference-only; not imported into active production runtime",
+  "files": [
+    {
+      "path": ".env.example",
+      "sha": "710ad7bf09ff97bd918fdd214598b788c3b037cf",
+      "size": 1263
+    },
+    {
+      "path": ".gitignore",
+      "sha": "872d5f6c6f29794f4d9c1f40acd6a65fb9c39d6d",
+      "size": 2165
+    },
+    {
+      "path": "COMMERCIALIZATION_BASELINE.md",
+      "sha": "894fce26a5d5df0866e16f81c39e097a3836e98c",
+      "size": 1607
+    },
+    {
+      "path": "CONSOLIDATION_STATUS.md",
+      "sha": "9c082eef8810e11d7ee1cd7e1271a40674dde2ef",
+      "size": 2484
+    },
+    {
+      "path": "CONTENT_STRATEGY.md",
+      "sha": "c06a27b40755a9d29dbc66cd324bdc6f98b4520b",
+      "size": 2449
+    },
+    {
+      "path": "MIGRATION_STATUS.md",
+      "sha": "984f65560a187f47757294c74ad3d42b278d0204",
+      "size": 2941
+    },
+    {
+      "path": "README.md",
+      "sha": "a465536c2527b3d05506ca571ce2923ce3d9ec0d",
+      "size": 4488
+    },
+    {
+      "path": "docs/deployment-hostinger.md",
+      "sha": "4b5620afea38bf07151c4dfa8e116500e4c6688a",
+      "size": 2174
+    },
+    {
+      "path": "docs/environment.md",
+      "sha": "a5dd10033abf6be5d6916b587c5bbfb5998a1f9b",
+      "size": 1758
+    },
+    {
+      "path": "docs/pages.md",
+      "sha": "c5c4e570ee95f2823b7fc34f9c7473c80310d06b",
+      "size": 1321
+    },
+    {
+      "path": "env.example",
+      "sha": "1d028d03cfdcf4e43cca19305e9acb6c5d3f238e",
+      "size": 924
+    },
+    {
+      "path": "index.html",
+      "sha": "9fa9de6026c2e4015bcd046dc3618cc15b1243f5",
+      "size": 533
+    },
+    {
+      "path": "package.json",
+      "sha": "ac63b15c533ec20afa8a7d235d09ff81a8a7ef03",
+      "size": 767
+    },
+    {
+      "path": "public/robots.txt",
+      "sha": "fc181117149cfa359e2530bad4a2617f6eadd5a1",
+      "size": 65
+    },
+    {
+      "path": "public/site.webmanifest",
+      "sha": "4d90afc65e5fbde8b178495154ee251f35e2e241",
+      "size": 281
+    },
+    {
+      "path": "public/sitemap.xml",
+      "sha": "ef547e66b0a18df58e9a7d145404a95fe6348a4b",
+      "size": 990
+    },
+    {
+      "path": "robots.txt",
+      "sha": "fc181117149cfa359e2530bad4a2617f6eadd5a1",
+      "size": 65
+    },
+    {
+      "path": "scripts/build.mjs",
+      "sha": "fe389340d9db63e3fc02831ab5b8ded7c9ca7c9a",
+      "size": 241
+    },
+    {
+      "path": "scripts/check.mjs",
+      "sha": "d1cd13d53ef5104d458e0a6c3c0fefb68b32cbfb",
+      "size": 2559
+    },
+    {
+      "path": "scripts/source-only-start.mjs",
+      "sha": "62905e7fa763301f11830e2f204104bd1586e6c2",
+      "size": 558
+    },
+    {
+      "path": "scripts/verify-sites-source.mjs",
+      "sha": "119f950bd947ddb10535c8ca17a62381522f2199",
+      "size": 1888
+    },
+    {
+      "path": "server.js",
+      "sha": "43a57ae95365c842ede23f72e1495c1f0a50ccd4",
+      "size": 15736
+    },
+    {
+      "path": "sitemap.xml",
+      "sha": "caaf4ae8f136089b6d40dfae2fdf8ae5cf8ce6a5",
+      "size": 1255
+    },
+    {
+      "path": "sites/qrv-global-verification/README.md",
+      "sha": "616af73e7eae5cb9efd9bd1dc1be6ac909a8e779",
+      "size": 1971
+    },
+    {
+      "path": "sites/qrv-global-verification/site.manifest.json",
+      "sha": "085f5c5b69c584e4bda2a01be3cbe3653ceef67a",
+      "size": 1852
+    },
+    {
+      "path": "src/App.jsx",
+      "sha": "41259414dba3cb9eb14c0db747da7167249659fb",
+      "size": 8819
+    },
+    {
+      "path": "src/config.js",
+      "sha": "a8956974b4186dc324cfda6e2bd908d6e096e51c",
+      "size": 1061
+    },
+    {
+      "path": "src/main.jsx",
+      "sha": "4512f3b315187a3828c24ae55aa9653bd1655e4a",
+      "size": 214
+    },
+    {
+      "path": "src/styles.css",
+      "sha": "5562d31acf13777fac97b891565c1cacc34c5443",
+      "size": 4253
+    },
+    {
+      "path": "vite.config.js",
+      "sha": "0c27fc18a595f2562757200c72ac43f5dd58ac37",
+      "size": 355
+    }
+  ]
+}
