@@ -1,7 +1,7 @@
 const platformBase = (process.env.QRV_NODE_URL || "https://qrv.network").replace(/\/$/, "");
 const apiBase = (process.env.QRV_API_URL || "https://api.qrv.network").replace(/\/$/, "");
 const legacyVerifyBase = (process.env.QRV_LEGACY_VERIFY_URL || "https://verify.qrv.network").replace(/\/$/, "");
-const demoQrvid = process.env.QRV_DEMO_QRVID || "QRV-PROD-CERT-000001";
+const demoQrvid = process.env.QRV_DEMO_QRVID || process.env.QRV_CANONICAL_QRVID || "QRV-PROD-CERT-000001";
 const unknownQrvid = process.env.QRV_UNKNOWN_QRVID || "QRV-PROD-CERT-DOES-NOT-EXIST";
 const malformedQrvid = process.env.QRV_MALFORMED_QRVID || "NOT-A-QRVID";
 const timeoutMs = Number(process.env.QRV_ACCEPTANCE_TIMEOUT_MS || 10000);
