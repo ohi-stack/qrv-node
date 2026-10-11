@@ -75,12 +75,11 @@ service cloud.firestore {
       }
     }
 
-    // Public Recent Verification History & Telemetry
+    // Canonical verification events are server-side audit records.
+    // Browser users must never insert, read, forge, or modify a global audit feed.
+    // User-specific bookmarks remain separately scoped under /users/{userId}.
     match /verification_history/{recordId} {
-      allow get: if isValidId(recordId);
-      allow list: if true;
-      allow create: if isValidId(recordId) && isValidVerificationRecord(incoming());
-      allow update, delete: if false; // Append-only immutable telemetry audit log
+      allow read, write: if false;
     }
   }
 }
