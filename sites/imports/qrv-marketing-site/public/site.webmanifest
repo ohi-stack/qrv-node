@@ -1,0 +1,10 @@
+{
+  "name": "QR-V Global Verification Network",
+  "short_name": "QR-V",
+  "description": "Registry-based verification infrastructure for QR-based records.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#071126",
+  "theme_color": "#071126",
+  "icons": []
+}

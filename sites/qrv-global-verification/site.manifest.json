@@ -55,5 +55,17 @@
   "siteSourceCommit": "3ca2be27b40e2eb8eb47891beea7ff7bf9906e22",
   "siteVersion": 11,
   "siteVersionId": "appgprj_6a6bc4a21f848191913b5d346d0ae466~appgver_f302b9bb7e4c8191b25efcba2b2ed301",
-  "siteSyncStatus": "synced"
+  "siteSyncStatus": "version-11-runtime; version-12-source-metadata-preserved; visual-parity-pending",
+  "upstreamSourceEvidence": {
+    "repository": "ohi-stack/qrv-marketing-site",
+    "commit": "b0660af958a1a3ba3be0df036e671a25ed4d5647",
+    "sourceTreeSha": "b0660af958a1a3ba3be0df036e671a25ed4d5647",
+    "siteVersion": 12,
+    "siteSourceCommit": "b551e69d9a797d18376315a8353e7521c07b175f",
+    "siteVersionId": "appgprj_6a6bc4a21f848191913b5d346d0ae466~appgver_e0e2264f7fe8819191d116965e67a985",
+    "sourceSyncStatus": "reference-synchronized",
+    "importLocation": "sites/imports/qrv-marketing-site",
+    "captureDate": "2026-10-11",
+    "scope": "Complete tracked GitHub source snapshot; direct latest ChatGPT Sites export not independently available"
+  }
 }

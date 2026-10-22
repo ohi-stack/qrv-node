@@ -1,0 +1,53 @@
+{
+  "site": "qrv-global-verification",
+  "network": "QR-V Global Verification Network",
+  "publicDomain": "https://qrv.network",
+  "canonicalRepository": "ohi-stack/qrv-node",
+  "migrationSourceRepository": "ohi-stack/qrv-marketing-site",
+  "sourceType": "ChatGPT Sites",
+  "syncPolicy": "source-history-to-canonical-qrv-node",
+  "siteSourceRoot": "sites/qrv-global-verification",
+  "canonicalFrontendSourceRoot": "ohi-stack/qrv-node/src/web",
+  "canonicalPublicRoutes": [
+    "/",
+    "/protocol",
+    "/how-it-works",
+    "/verify",
+    "/registry",
+    "/issuer",
+    "/use-cases",
+    "/pricing",
+    "/developers",
+    "/docs",
+    "/status",
+    "/store",
+    "/network",
+    "/about"
+  ],
+  "requiredSiteElements": [
+    "responsive header",
+    "mega-menu-ready information architecture",
+    "mobile navigation",
+    "verification-focused hero",
+    "QR-V network visual representation",
+    "verification CTA",
+    "issuer CTA",
+    "responsive page sections"
+  ],
+  "runtimeBoundaries": {
+    "publicPlatformSourceAndRuntime": "ohi-stack/qrv-node",
+    "apiAndRegistryAuthority": "ohi-stack/qrv-api"
+  },
+  "rules": [
+    "Do not deploy qrv-marketing-site as the production qrv.network origin.",
+    "Preserve this repository as migration/source history until retirement evidence is complete.",
+    "Mobile and desktop must render from the same canonical qrv-node source revision.",
+    "Protected API credentials and registry secrets must never be committed with site files.",
+    "Public verification behavior remains deterministic under QRVP-1 and QVS-1.0."
+  ],
+  "lastUpdated": "2026-09-19T00:00:00Z",
+  "siteSourceCommit": "b551e69d9a797d18376315a8353e7521c07b175f",
+  "siteVersion": 12,
+  "siteVersionId": "appgprj_6a6bc4a21f848191913b5d346d0ae466~appgver_e0e2264f7fe8819191d116965e67a985",
+  "syncStatus": "reference-synchronized"
+}
