@@ -23,7 +23,8 @@
     "acceptance:live": "node scripts/live-acceptance.mjs",
     "validate:prod": "npm run check && npm run build && npm run check:dist && npm run test:routing",
     "check:skills": "node scripts/check-production-skills.mjs",
-    "check:site-import": "node scripts/check-site-import.mjs"
+    "check:site-import": "node scripts/check-site-import.mjs",
+    "check:grpc": "node scripts/check-grpc-resolutions.mjs"
   },
   "engines": {
     "node": ">=20"
