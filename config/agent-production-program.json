@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "1.0",
+  "program": "QR-V Multi-Agent Production Engineering",
+  "effectiveDate": "2026-09-17",
+  "releaseAuthority": {
+    "repository": "ohi-stack/qrv-node",
+    "issue": 7
+  },
+  "productionBlocker": {
+    "repository": "ohi-stack/qrv-node",
+    "issue": 14
+  },
+  "controlPlane": {
+    "system": "ACC",
+    "tracking": {
+      "repository": "ohi-stack/qrv-node",
+      "issue": 29
+    },
+    "humanFinalApprovalRequired": true
+  },
+  "runtimeTopology": {
+    "publicPlatform": "https://qrv.network",
+    "trustedApi": "https://api.qrv.network",
+    "canonicalRegistry": "PostgreSQL",
+    "allowAdditionalProductionRuntimeHostnames": false
+  },
+  "agentClasses": {
+    "builder": {
+      "examples": ["Codex-class"],
+      "maySelfApproveRelease": false,
+      "requiresBoundedIssue": true
+    },
+    "reviewer": {
+      "examples": ["Grok-class", "independent reviewer"],
+      "authority": "advisory",
+      "maySelfApproveRelease": false
+    }
+  },
+  "waves": [
+    {
+      "id": 0,
+      "name": "live-release-acceptance",
+      "tracking": "ohi-stack/qrv-node#14",
+      "gate": "CREATE -> QRVID -> VERIFIED -> revoke -> REVOKED -> audit"
+    },
+    {
+      "id": 1,
+      "name": "trust-api-foundation",
+      "tracking": ["ohi-stack/qrv-api#16", "ohi-stack/qrv-api#6"]
+    },
+    {
+      "id": 2,
+      "name": "people-company-product",
+      "tracking": "ohi-stack/qrv-node#26"
+    },
+    {
+      "id": 3,
+      "name": "developer-sdk",
+      "tracking": "ohi-stack/qrv-sdk#1"
+    },
+    {
+      "id": 4,
+      "name": "agent-interoperability",
+      "tracking": "ohi-stack/qrv-agent-demos#2"
+    },
+    {
+      "id": 5,
+      "name": "commercial-provisioning",
+      "tracking": "ohi-stack/qrv-api#14",
+      "dependsOnWave": 0
+    },
+    {
+      "id": 6,
+      "name": "issuer-adoption",
+      "tracking": "ohi-stack/qrv-node#9",
+      "dependsOnWave": 0
+    }
+  ],
+  "taskContractRequiredFields": [
+    "repository",
+    "issue",
+    "objective",
+    "nonGoals",
+    "authoritativeReferences",
+    "dependencies",
+    "scope",
+    "requiredTests",
+    "securityRequirements",
+    "acceptanceCriteria",
+    "migrationRequirements",
+    "rollbackRequirements",
+    "prohibitedChanges"
+  ],
+  "evidenceRequired": [
+    "issue",
+    "branch",
+    "pullRequest",
+    "commitSha",
+    "ciRun",
+    "reviewerReport",
+    "humanApproval",
+    "deploymentId",
+    "liveAcceptanceResult"
+  ],
+  "releaseGates": {
+    "ciRequired": true,
+    "humanApprovalRequired": true,
+    "liveAcceptanceRequired": true,
+    "protocolSemanticChangesByAgentsAllowed": false,
+    "secretsInTaskPayloadsAllowed": false
+  }
+}
