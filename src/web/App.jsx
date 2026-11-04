@@ -100,9 +100,9 @@ const navGroups = [
     label: 'Company',
     items: [
       ['About QR-V', '/about'],
-      ['Contact', '/about#contact'],
-      ['Pricing', '/pricing'],
-      ['Terms & Privacy', '/about']
+      ['Contact', '/contact'],
+      ['Support', '/support'],
+      ['Terms & Privacy', '/terms']
     ]
   }
 ];
@@ -447,7 +447,7 @@ export default function App() {
                 <StatusPill active>SHA-256 active</StatusPill>
                 <StatusPill>Ed25519 pending</StatusPill>
                 <StatusPill>Canonical JSON</StatusPill>
-                <StatusPill>TLS 1.3</StatusPill>
+                <StatusPill>Fail-closed verification</StatusPill>
               </div>
             </div>
             <LiveRecordCard />
@@ -458,14 +458,14 @@ export default function App() {
           <div className="page-shell">
             <div className="section-heading compact">
               <p className="eyebrow">Production topology</p>
-              <h2>Production services on one verified origin.</h2>
+              <h2>One public platform. One trusted API boundary.</h2>
             </div>
             <div className="topology-grid">
               <article><span>01</span><div><h3>QR-V platform</h3><p>qrv.network</p><small>Public website and human workflows</small></div></article>
               <article><span>02</span><div><h3>Verification API</h3><p>api.qrv.network/api/v1</p><small>Trusted registry and machine operations</small></div></article>
               <article className="topology-proof"><BadgeCheck /><div><h3>Registry-backed</h3><p>Canonical source records</p></div></article>
               <article className="topology-proof"><ShieldCheck /><div><h3>Cryptographic roadmap</h3><p>SHA-256 active · Ed25519 required</p></div></article>
-              <article className="topology-proof"><Globe2 /><div><h3>Globally verifiable</h3><p>One scan, clear status</p></div></article>
+              <article className="topology-proof"><Globe2 /><div><h3>Public verification</h3><p>One scan, deterministic status</p></div></article>
             </div>
           </div>
         </section>
@@ -489,7 +489,7 @@ export default function App() {
                 <span className="card-number">02</span>
                 <h3>QR-V verification</h3>
                 <p>A structured reference backed by issuer identity, registry state, cryptographic integrity, and an auditable lifecycle.</p>
-                <ul><li>Known issuing authority</li><li>Deterministic status</li><li>Hash and signature checks</li></ul>
+                <ul><li>Known issuing authority</li><li>Deterministic status</li><li>Hash checks · signature activation pending</li></ul>
               </article>
             </div>
           </div>
@@ -590,8 +590,8 @@ export default function App() {
             </div>
             <div className="pricing-grid">
               <article><span>Pilot</span><strong>$0 <small>/ limited</small></strong><p>Validate your first workflow with a controlled issuer pilot.</p></article>
-              <article className="selected"><span className="selected-label">Most selected</span><span>Starter</span><strong>$49 <small>/ month</small></strong><p>Issuer Portal access for up to 1,000 managed records.</p></article>
-              <article><span>Professional</span><strong>$299 <small>/ month</small></strong><p>Team controls, API access, and up to 25,000 records.</p></article>
+              <article className="selected"><span className="selected-label">Issuer plan</span><span>Starter</span><strong>$199 <small>/ month</small></strong><p>Issuer Portal access for controlled certificate and verification workflows.</p></article>
+              <article><span>Professional</span><strong>$1,500 <small>/ month</small></strong><p>Advanced issuer operations, API access, and enterprise workflow support.</p></article>
             </div>
           </div>
         </section>
@@ -604,7 +604,7 @@ export default function App() {
               <p>Integrate QR-V through deterministic REST responses, documented statuses, issuer APIs, and the QRVP-1 protocol model.</p>
               <a className="button secondary" href="/developers">Open developer portal</a>
             </div>
-            <pre className="code-card"><code>{`GET https://qrv.network/api/v1/verify/${QRV_CONFIG.demoQrvid}\n\n{\n  "status": "VERIFIED",\n  "integrity": {\n    "hashValid": true,\n    "signatureState": "PENDING_ED25519"\n  }\n}`}</code></pre>
+            <pre className="code-card"><code>{`GET https://api.qrv.network/api/v1/verify/${QRV_CONFIG.demoQrvid}\n\n{\n  "status": "VERIFIED",\n  "integrity": {\n    "hashValid": true,\n    "signatureState": "PENDING_ED25519"\n  }\n}`}</code></pre>
           </div>
         </section>
 
