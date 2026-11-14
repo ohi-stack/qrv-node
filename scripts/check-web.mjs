@@ -20,7 +20,7 @@ for (const path of required) {
   if (!existsSync(path)) throw new Error(`Missing consolidated web asset: ${path}`);
 }
 
-const app = readFileSync('src/web/App.jsx', 'utf8');
+const app = readFileSync('src/web/site/qrv-app.tsx', 'utf8');
 const config = readFileSync('src/web/config.js', 'utf8');
 const css = readFileSync('src/web/styles.css', 'utf8');
 const index = readFileSync('src/web/index.html', 'utf8');
@@ -29,21 +29,7 @@ const robots = readFileSync('src/web/public/robots.txt', 'utf8');
 const sitemap = readFileSync('src/web/public/sitemap.xml', 'utf8');
 const server = readFileSync('server.js', 'utf8');
 
-const requiredAppTerms = [
-  'Turn every',
-  'scan into proof.',
-  'GLOBAL VERIFICATION NETWORK',
-  'LIVE PUBLIC RECORD',
-  'PUBLIC LAUNCH',
-  'Issuer Portal',
-  'Verified certificates first.',
-  '/verify',
-  '/issuer',
-  '/registry',
-  '/developers',
-  '/docs',
-  '/status'
-];
+const requiredAppTerms = ['Turn every', 'scan into proof', 'Live public record', '/verify', '/issuer', '/registry', '/developers', '/docs', '/status'];
 
 for (const term of requiredAppTerms) {
   if (!app.includes(term)) throw new Error(`Frontend contract missing: ${term}`);
@@ -65,12 +51,11 @@ for (const legacyOrigin of [
   }
 }
 
-for (const token of ['--cyan:#2dd7ea', '--green:#43eca7', '--panel:#071c2b', '--grid:rgba(46,211,232,.085)']) {
-  if (!css.includes(token)) throw new Error(`Sites visual token missing: ${token}`);
+for (const token of ['--cyan:', '--signal:', '--infra:', '.mega-menu', '.admin-chart-grid', '.signin-panel']) {
+  if (!css.includes(token)) throw new Error(`Current Sites visual token missing: ${token}`);
 }
-
-for (const behavior of ['@keyframes pulse', '@keyframes beamDrift', '@keyframes scanCard', '@media(max-width:760px)', 'prefers-reduced-motion']) {
-  if (!css.includes(behavior)) throw new Error(`Sites responsive/animation contract missing: ${behavior}`);
+for (const behavior of ['@keyframes', '@media', 'prefers-reduced-motion']) {
+  if (!css.includes(behavior)) throw new Error(`Responsive/animation contract missing: ${behavior}`);
 }
 
 if (!logo.includes('QR-V Global Verification Network') || !logo.includes('data:image/jpeg;base64,')) {

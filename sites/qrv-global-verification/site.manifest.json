@@ -51,10 +51,7 @@
     "Public verification behavior remains deterministic under QRVP-1 and QVS-1.0.",
     "A live record card may display VERIFIED only when the verification API returns VERIFIED."
   ],
-  "lastUpdated": "2026-09-19T00:00:00Z",
-  "siteSourceCommit": "3ca2be27b40e2eb8eb47891beea7ff7bf9906e22",
-  "siteVersion": 11,
-  "siteVersionId": "appgprj_6a6bc4a21f848191913b5d346d0ae466~appgver_f302b9bb7e4c8191b25efcba2b2ed301",
+  "lastUpdated": "2026-11-14",
   "siteSyncStatus": "version-11-runtime; version-12-source-metadata-preserved; visual-parity-pending",
   "upstreamSourceEvidence": {
     "repository": "ohi-stack/qrv-marketing-site",
@@ -67,5 +64,12 @@
     "importLocation": "sites/imports/qrv-marketing-site",
     "captureDate": "2026-10-11",
     "scope": "Complete tracked GitHub source snapshot; direct latest ChatGPT Sites export not independently available"
-  }
+  },
+  "currentSourceCommit": "c33a19764ce9ae663a5660f7c274aad80ae0ece0",
+  "currentSourceRoot": "sites/current-source",
+  "latestSavedSiteVersion": 14,
+  "sourceAheadOfSavedVersion": true,
+  "nodeIntegrationStatus": "public-frontend-integrated-protected-sites-runtime-preserved-for-review",
+  "savedSiteSourceCommit": "06da543017695394c460da060d28e18d8e6ad857",
+  "syncStatus": "prepared-for-review"
 }
