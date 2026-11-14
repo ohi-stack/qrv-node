@@ -53,14 +53,18 @@ export default function LiveActivityGraph() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [telemetryError, setTelemetryError] = useState(false);
 
   const fetchData = async () => {
     try {
       const activity = await qrvApiService.getVerificationActivity();
       setData(activity);
+      setTelemetryError(false);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
       console.warn('Failed to load live verification activity:', err);
+      setTelemetryError(true);
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -74,8 +78,8 @@ export default function LiveActivityGraph() {
 
   const totalRequests = data.reduce((acc, curr) => acc + (curr.verifications || 0), 0);
   const totalVerified = data.reduce((acc, curr) => acc + (curr.success || 0), 0);
-  const successRate = totalRequests > 0 ? ((totalVerified / totalRequests) * 100).toFixed(1) : '99.2';
-  const avgLatency = data.length > 0 ? Math.round(data.reduce((acc, curr) => acc + (curr.latency || 0), 0) / data.length) : 22;
+  const successRate = totalRequests > 0 ? ((totalVerified / totalRequests) * 100).toFixed(1) : null;
+  const avgLatency = data.length > 0 ? Math.round(data.reduce((acc, curr) => acc + (curr.latency || 0), 0) / data.length) : null;
 
   return (
     <div
@@ -119,7 +123,7 @@ export default function LiveActivityGraph() {
               }}
             >
               <span className="pulse-dot" style={{ width: '7px', height: '7px' }} />
-              LIVE TELEMETRY
+              {telemetryError ? 'TELEMETRY UNAVAILABLE' : 'MEASURED TELEMETRY'}
             </span>
             {lastUpdated && (
               <span style={{ color: '#7190a6', fontSize: '11px', fontFamily: 'monospace' }}>
@@ -139,7 +143,7 @@ export default function LiveActivityGraph() {
             Recent Verification Activity
           </h3>
           <p style={{ margin: 0, color: '#9ab0c3', fontSize: '13px' }}>
-            Deterministic registry-backed resolution request counts across past 60 minutes
+            Measured canonical verification activity; unavailable until connected to backend telemetry
           </p>
         </div>
 
@@ -189,7 +193,7 @@ export default function LiveActivityGraph() {
             Total Scans
           </div>
           <div style={{ marginTop: '6px', color: '#2dd7ea', fontSize: '22px', fontWeight: 900, fontFamily: 'monospace' }}>
-            {loading ? '…' : totalRequests.toLocaleString()}
+            {loading ? '…' : telemetryError ? 'Unavailable' : totalRequests.toLocaleString()}
           </div>
         </div>
 
@@ -206,7 +210,7 @@ export default function LiveActivityGraph() {
             Verified Ratio
           </div>
           <div style={{ marginTop: '6px', color: '#43eca7', fontSize: '22px', fontWeight: 900, fontFamily: 'monospace' }}>
-            {loading ? '…' : `${successRate}%`}
+            {loading ? '…' : successRate === null || telemetryError ? 'N/A' : `${successRate}%`}
           </div>
         </div>
 
@@ -223,7 +227,7 @@ export default function LiveActivityGraph() {
             Avg Latency
           </div>
           <div style={{ marginTop: '6px', color: '#f6c65b', fontSize: '22px', fontWeight: 900, fontFamily: 'monospace' }}>
-            {loading ? '…' : `${avgLatency} ms`}
+            {loading ? '…' : avgLatency === null || telemetryError ? 'N/A' : `${avgLatency} ms`}
           </div>
         </div>
       </div>
