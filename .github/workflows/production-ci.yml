@@ -26,6 +26,8 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Confirm patched grpc dependency tree
+        run: npm run check:grpc
       - name: Production validation
         run: npm run validate:prod
       - name: Dependency audit
