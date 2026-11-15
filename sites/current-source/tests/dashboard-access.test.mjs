@@ -21,7 +21,9 @@ test('signed-in user gets user dashboard but no admin data', async () => {
  const headers = { 'oai-authenticated-user-email': 'ordinary@example.com' };
  const response = await request('/dashboard', headers);
  assert.equal(response.status, 200);
- assert.match(await response.text(), /User dashboard/);
+ const html = await response.text();
+ for (const label of ['User dashboard', 'Verify a record', 'Search public registry', 'Issuer workspace']) assert.ok(html.includes(label));
+ assert.doesNotMatch(html, /Admin dashboard/);
  const admin = await request('/admin', headers);
  assert.match(await admin.text(), /Administrator access required/);
 });
@@ -32,7 +34,7 @@ test('authorized administrator receives the complete navigation and inquiry char
   const response = await request('/admin', { 'oai-authenticated-user-email': 'admin@example.com' });
   assert.equal(response.status, 200);
   const html = await response.text();
-  for (const label of ['Overview', 'Records', 'Issue record', 'Certificates', 'QR codes', 'Revocations', 'Analytics', 'API keys', 'Team', 'Billing', 'Settings', 'Arrivals over time', 'Inquiry status', 'Issuer inquiries']) assert.ok(html.includes(label), `${label} missing from admin workspace`);
+  for (const label of ['Overview', 'Review inquiries', 'Records', 'Issue record', 'Certificates', 'QR codes', 'Revocations', 'Analytics', 'API keys', 'Team', 'Billing', 'Settings', 'Arrivals over time', 'Inquiry status', 'Issuer inquiries']) assert.ok(html.includes(label), `${label} missing from admin workspace`);
   assert.match(html, /Latest 200 inquiries only/);
   assert.match(html, /Loading inquiries/);
  } finally {

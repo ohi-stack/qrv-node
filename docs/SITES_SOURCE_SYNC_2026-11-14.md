@@ -5,6 +5,8 @@ Owner: ChatGPT Sites builder. Node branch: `work/chatgpt-sites`; review target: 
 
 ## Exact source
 
+November 15 follow-up: `sites/current-source/` and its SHA-256 inventory now match published Sites version 15 (`173d8403784a24b5ed23e4ad4c6d4cac325cd3b4`). The dashboard changes are preserved in this snapshot. The November 14 source and version below describe the earlier synchronization.
+
 Project `appgprj_6a6bc4a21f848191913b5d346d0ae466`, slug `qrv-global-verification`.
 Source HEAD: `c33a19764ce9ae663a5660f7c274aad80ae0ece0`.
 Latest saved Site version: 14, source `06da543017695394c460da060d28e18d8e6ad857`.

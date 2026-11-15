@@ -1,9 +1,9 @@
 {
   "projectId": "appgprj_6a6bc4a21f848191913b5d346d0ae466",
-  "sourceCommit": "c33a19764ce9ae663a5660f7c274aad80ae0ece0",
-  "latestSavedVersion": 14,
-  "savedVersionCommit": "06da543017695394c460da060d28e18d8e6ad857",
-  "sourceAheadOfSavedVersion": true,
+  "sourceCommit": "173d8403784a24b5ed23e4ad4c6d4cac325cd3b4",
+  "latestSavedVersion": 15,
+  "savedVersionCommit": "173d8403784a24b5ed23e4ad4c6d4cac325cd3b4",
+  "sourceAheadOfSavedVersion": false,
   "excluded": [
     ".openai/",
     ".vinext/",
@@ -48,8 +48,8 @@
     },
     {
       "path": "app/admin/workspace.tsx",
-      "sha256": "0428303ce569725560a1247cd1af9deaa4a81049a2e95b6661d64e4188e1ebcd",
-      "size": 28809
+      "sha256": "3273c1ffe141d3579c505c79586eea22864df910023931813db5589b2be98614",
+      "size": 29216
     },
     {
       "path": "app/api/dashboard/admin/route.ts",
@@ -88,18 +88,18 @@
     },
     {
       "path": "app/dashboard/page.tsx",
-      "sha256": "8beb2c44dfec43b49b7e69dc9774ef2bbad4f3a06e84d3e587da13529f654b0e",
-      "size": 528
+      "sha256": "9d24b6a07844b809911cbae44b5c7ed7a4e1c871b15ed9012bd53ef98c04b97b",
+      "size": 514
     },
     {
       "path": "app/dashboard/workspace.tsx",
-      "sha256": "a1540f9b5b133748e14448c6b6bad81390e10c8b19882c80dbe6486d7a60a856",
-      "size": 7649
+      "sha256": "ed779e8fdd9bc054faf387674dffd8b75ce5f9ff59235bea5df135691a865620",
+      "size": 7567
     },
     {
       "path": "app/globals.css",
-      "sha256": "c96ecae45e1393194b64c726709e31f35c99cbe915030398e94eca8be7dad956",
-      "size": 117504
+      "sha256": "e7cb88f4ed2518091f798c2b5108dfffa73f47935da2af46e8de58cdc5e61fd2",
+      "size": 118614
     },
     {
       "path": "app/healthz/route.ts",
@@ -338,8 +338,8 @@
     },
     {
       "path": "tests/dashboard-access.test.mjs",
-      "sha256": "fc6313c9eff7b783ba90274f6072689e9f74e3b078f490a052854ec3855c55e8",
-      "size": 2983
+      "sha256": "d1860d0e59369d1a14dcfcd1bb841be0d36535b69f0fa6b64cb9a01eb061acbb",
+      "size": 3170
     },
     {
       "path": "tests/rendered-html.test.mjs",

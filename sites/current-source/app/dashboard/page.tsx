@@ -6,5 +6,5 @@ export const metadata = { title: 'User Dashboard', robots: { index: false, follo
 export default async function Page() {
   const user = await requireChatGPTUser('/dashboard');
   const { isAdmin } = await dashboardIdentity();
-  return <Dashboard name={user.displayName} email={user.email} isAdmin={isAdmin} admin={false} />;
+  return <Dashboard name={user.displayName} email={user.email} isAdmin={isAdmin} />;
 }
