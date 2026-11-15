@@ -248,3 +248,7 @@ be onboarded / entitled
 Reusable Codex/ACC skill definitions, dispatch, repository ownership and production truth gates live under [skills/qrv](skills/qrv/README.md) and [`.agents/skills`](.agents/skills). They are not evidence that features are already live. Run `npm run check:skills` (included in `npm run check`) and use [release gates](docs/PRODUCTION_SKILLS_AND_RELEASE_GATES.md) before approval.
 
 **Latest P0 incident:** [October 11 live acceptance failure](docs/PRODUCTION_ACCEPTANCE_FAILURE_2026-10-11.md) and [dependency-security issue #49](https://github.com/ohi-stack/qrv-node/issues/49). Platform `/readyz` returning 503 is fail-closed while `api.qrv.network` serves HTML instead of API JSON; Hostinger/API remediation, PostgreSQL lifecycle proof, dependency audit and human release approval remain required.
+
+## Repository consolidation
+
+See [source inventory and integration notes](docs/repository-consolidation/README.md).
