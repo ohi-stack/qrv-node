@@ -117,3 +117,11 @@ main
       ↓
 production deployment and live acceptance
 ```
+
+## QR-V production skill dispatch (2026-10-11)
+
+Use the [12 Codex/ACC engineering skills](skills/qrv/README.md) from `.agents/skills/`. Choose the smallest appropriate skill for the issue and record the exact repository, branch, SHA, owner, evidence, blocker and next action. The [release-gate matrix](docs/PRODUCTION_SKILLS_AND_RELEASE_GATES.md) is mandatory for any production claim.
+
+Current live failure evidence: [October 11 triage](docs/PRODUCTION_ACCEPTANCE_FAILURE_2026-10-11.md). Treat `api.qrv.network` HTML on API routes as a blocking topology/contract mismatch; preserve fail-closed 503 on `qrv.network/readyz`. Security issue #49 blocks production acceptance. Do not permit skills or builders to mark COMPLETE without real PostgreSQL VERIFIED → REVOKED and audit evidence.
+
+Run `npm run check:skills`, `npm run validate:prod`, and `npm audit --omit=dev --audit-level=high` before asking for review. Never auto-merge or deploy; require independent QA and human release approval.

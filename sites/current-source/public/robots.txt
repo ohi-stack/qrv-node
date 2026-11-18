@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /issuer/dashboard
+Disallow: /issuer/records
+Disallow: /admin
+
+Sitemap: https://qrv.network/sitemap.xml

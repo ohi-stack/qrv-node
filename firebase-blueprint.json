@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile for QR-V workspace",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User UID from Firebase Authentication",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address",
+          "maxLength": 256
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Public display name",
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Avatar image URL",
+          "maxLength": 512
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["userId", "email"]
+    },
+    "VerificationBookmark": {
+      "title": "VerificationBookmark",
+      "description": "User bookmarked or audited QR-V verification record",
+      "type": "object",
+      "properties": {
+        "bookmarkId": {
+          "type": "string",
+          "description": "Unique identifier for bookmark",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "qrvid": {
+          "type": "string",
+          "description": "Canonical QR-V identifier (QRV-*)",
+          "maxLength": 128,
+          "pattern": "^QRV-[A-Z0-9][A-Z0-9-]{2,127}$"
+        },
+        "status": {
+          "type": "string",
+          "description": "Verification status at time of scan",
+          "enum": ["VALID", "REVOKED", "NOT_FOUND", "PENDING", "UNKNOWN"],
+          "maxLength": 32
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes from inspector or auditor",
+          "maxLength": 500
+        },
+        "pinned": {
+          "type": "boolean",
+          "description": "Whether the record is pinned to inspector dashboard"
+        },
+        "verifiedAt": {
+          "type": "string",
+          "description": "Server or resolution timestamp"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["userId", "qrvid", "status"]
+    },
+    "VerificationRecord": {
+      "title": "VerificationRecord",
+      "description": "Public verification audit and telemetry log record in Firestore",
+      "type": "object",
+      "properties": {
+        "recordId": {
+          "type": "string",
+          "description": "Unique identifier for verification log",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "qrvid": {
+          "type": "string",
+          "description": "Canonical QR-V identifier",
+          "maxLength": 128,
+          "pattern": "^QRV-[A-Z0-9][A-Z0-9-]{2,127}$"
+        },
+        "status": {
+          "type": "string",
+          "description": "Resolution status",
+          "enum": ["VALID", "REVOKED", "NOT_FOUND", "EXPIRED", "PENDING"],
+          "maxLength": 32
+        },
+        "issuer": {
+          "type": "string",
+          "description": "Authority or issuer name",
+          "maxLength": 128
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp of verification resolution"
+        },
+        "latencyMs": {
+          "type": "number",
+          "description": "Resolution latency in milliseconds"
+        },
+        "resolvedBy": {
+          "type": "string",
+          "description": "Node service handling verification",
+          "maxLength": 64
+        }
+      },
+      "required": ["recordId", "qrvid", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile document indexed by Firebase Auth UID"
+    },
+    "/users/{userId}/bookmarks/{bookmarkId}": {
+      "schema": { "$ref": "#/entities/VerificationBookmark" },
+      "description": "User's bookmarked QR-V verifications and inspector audit notes"
+    },
+    "/verification_history/{recordId}": {
+      "schema": { "$ref": "#/entities/VerificationRecord" },
+      "description": "Immutable log of recent verification resolutions for status telemetry"
+    }
+  }
+}

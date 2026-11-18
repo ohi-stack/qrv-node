@@ -1,0 +1,86 @@
+[
+  {
+    "repo": "ohi-stack/qrv-admin",
+    "commit": "a8a8c6065b09d52bfe13261b3fdeb6098ec6c130",
+    "artifacts": [
+      {
+        "source": "README.md",
+        "destination": "docs/repository-consolidation/reference/qrv-admin/README.md",
+        "sha256": "8d4b3f9aa323e590c5c1582767e37063c1dec1e5c24caeb4e3f6761ea62e1149"
+      }
+    ],
+    "disposition": "Private admin workflow. Legacy dashboard uses its own implementation and stays out of the protected Node routes."
+  },
+  {
+    "repo": "ohi-stack/qrv-agent-demos",
+    "commit": "1fdbbc7f48cc77a895bda7cc0ee78d43fad298d5",
+    "artifacts": [],
+    "disposition": "Adapted the hiring-agent lookup into examples/verify-record.mjs. Legacy endpoints and automated acceptance are excluded."
+  },
+  {
+    "repo": "ohi-stack/qrv-billing",
+    "commit": "23b60932cfb150aa741b5c7e5b2e6c7ff1abcc73",
+    "artifacts": [
+      {
+        "source": "PLANS.md",
+        "destination": "docs/repository-consolidation/reference/qrv-billing/PLANS.md",
+        "sha256": "dfc152787ff64a5d9201a3afd0da84f7d737e1f94b3dad75904d91060ded0eb3"
+      }
+    ],
+    "disposition": "Planning reference for canonical pricing, store and billing routes. Payment activation remains separate."
+  },
+  {
+    "repo": "ohi-stack/qrv-developer-portal",
+    "commit": "469827f52a3853cbdb8d0d385220af2c3dec2071",
+    "artifacts": [],
+    "disposition": "Replaced stale quickstart paths with the read-only example."
+  },
+  {
+    "repo": "ohi-stack/qrv-explorer",
+    "commit": "c73d55bf03799256911fbf81158338b4094293b7",
+    "artifacts": [],
+    "disposition": "Already routes through the canonical Node registry. Standalone server adds no required capability."
+  },
+  {
+    "repo": "ohi-stack/qrv-marketing-site",
+    "commit": "b0660af958a1a3ba3be0df036e671a25ed4d5647",
+    "artifacts": [],
+    "disposition": "Published Sites v15 source is already in sites/current-source on the builder lane."
+  },
+  {
+    "repo": "ohi-stack/qrv-sdk",
+    "commit": "72d2bfe618b1252492ffe12825b04614fbdcaece",
+    "artifacts": [],
+    "disposition": "Canonical endpoint convention incorporated into the read-only example."
+  },
+  {
+    "repo": "ohi-stack/qrv-verify",
+    "commit": "45b880186a1ccadd1269dda29afceedd1d053e09",
+    "artifacts": [],
+    "disposition": "Canonical verifier already exists in Node. Standalone redirect service adds no required capability."
+  },
+  {
+    "repo": "ohi-stack/qrv-wallet",
+    "commit": "39d18e41d10d6917bcb89d2d913b933e74a0cd5a",
+    "artifacts": [
+      {
+        "source": "README.md",
+        "destination": "docs/repository-consolidation/reference/qrv-wallet/README.md",
+        "sha256": "48ad83d7ca6ef8c3f5808dea1b6234b27db33c19427fa30d92644e9d960af50d"
+      }
+    ],
+    "disposition": "Holder-workflow reference. Persistence and authorization remain open."
+  },
+  {
+    "repo": "ohi-stack/issuer-qrv",
+    "commit": "0263e3778d49aa5446eda145f22cff8deed15c9d",
+    "artifacts": [
+      {
+        "source": "docs/qrv-ui-backend-integration-checklist.md",
+        "destination": "docs/repository-consolidation/reference/issuer-qrv/docs/qrv-ui-backend-integration-checklist.md",
+        "sha256": "3cc9db8f7e6bf0667adee1241fcb57d735514af846fdd4b31eb7eeb545c748e1"
+      }
+    ],
+    "disposition": "Issuer UX reference. Legacy mock data and independent auth are excluded."
+  }
+]

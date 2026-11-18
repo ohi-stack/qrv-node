@@ -2,6 +2,15 @@
 
 `ohi-stack/qrv-node` is the canonical public application for `qrv.network`.
 
+## ChatGPT Sites synchronization
+
+The public Site slug `qrv-global-verification` is the current source for the customer-facing QR-V presentation. The latest validated Site source is version 11 at commit `3ca2be27b40e2eb8eb47891beea7ff7bf9906e22`. Its public presentation is synchronized into `src/web/` while this repository preserves the Express platform runtime and the `qrv-api` security boundary.
+
+The canonical split remains:
+
+- `qrv.network` — public platform and human-facing routes;
+- `api.qrv.network` — trusted API, registry authority, mutation, audit, and privileged operations.
+
 ## QR-V Production Architecture v1.0
 
 QR-V now uses a strict two-node production model:
@@ -233,3 +242,13 @@ be onboarded / entitled
 → same public URL returns EXPIRED or REVOKED deterministically
 → operator sees issuance, verification, revenue, security, and audit state in /admin
 ```
+
+## Production skill program (October 2026)
+
+Reusable Codex/ACC skill definitions, dispatch, repository ownership and production truth gates live under [skills/qrv](skills/qrv/README.md) and [`.agents/skills`](.agents/skills). They are not evidence that features are already live. Run `npm run check:skills` (included in `npm run check`) and use [release gates](docs/PRODUCTION_SKILLS_AND_RELEASE_GATES.md) before approval.
+
+**Latest P0 incident:** [October 11 live acceptance failure](docs/PRODUCTION_ACCEPTANCE_FAILURE_2026-10-11.md) and [dependency-security issue #49](https://github.com/ohi-stack/qrv-node/issues/49). Platform `/readyz` returning 503 is fail-closed while `api.qrv.network` serves HTML instead of API JSON; Hostinger/API remediation, PostgreSQL lifecycle proof, dependency audit and human release approval remain required.
+
+## Repository consolidation
+
+See [source inventory and integration notes](docs/repository-consolidation/README.md).

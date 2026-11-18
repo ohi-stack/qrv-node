@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "1.0",
+  "program": "QRV-PRODUCTION-SKILLS-001",
+  "recordDate": "2026-10-11",
+  "authority": {
+    "protocol": "QRVP-1",
+    "standard": "QVS-1.0",
+    "platform": "qrv.network",
+    "api": "api.qrv.network",
+    "data": "canonical PostgreSQL behind qrv-api"
+  },
+  "status": "SPECIFIED_NOT_PRODUCTION_ACCEPTED",
+  "releaseAuthority": "human founder/approved release owner",
+  "skillRoot": ".agents/skills",
+  "skills": [
+    {
+      "id": "QRV-01",
+      "slug": "qrv-production-failure-investigator",
+      "priority": "P0",
+      "primaryRepo": "ohi-stack/qrv-node",
+      "owner": "SRE / ACC triage",
+      "path": ".agents/skills/qrv-production-failure-investigator/SKILL.md"
+    },
+    {
+      "id": "QRV-02",
+      "slug": "qrv-platform-architecture-engineer",
+      "priority": "P0",
+      "primaryRepo": "ohi-stack/qrv-node",
+      "owner": "Platform architect",
+      "path": ".agents/skills/qrv-platform-architecture-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-03",
+      "slug": "qrv-postgresql-registry-engineer",
+      "priority": "P0",
+      "primaryRepo": "ohi-stack/qrv-api",
+      "owner": "API / data engineering",
+      "path": ".agents/skills/qrv-postgresql-registry-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-04",
+      "slug": "qrv-verification-protocol-engineer",
+      "priority": "P0",
+      "primaryRepo": "ohi-stack/qrv-api",
+      "owner": "Verification / API engineer",
+      "path": ".agents/skills/qrv-verification-protocol-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-05",
+      "slug": "qrv-cryptographic-security-engineer",
+      "priority": "P0",
+      "primaryRepo": "ohi-stack/qrv-api",
+      "owner": "Security engineer",
+      "path": ".agents/skills/qrv-cryptographic-security-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-06",
+      "slug": "qrv-issuer-portal-engineer",
+      "priority": "P0",
+      "primaryRepo": "ohi-stack/qrv-node",
+      "owner": "Issuer application engineer",
+      "path": ".agents/skills/qrv-issuer-portal-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-07",
+      "slug": "qrv-wallet-credential-engineer",
+      "priority": "P1",
+      "primaryRepo": "ohi-stack/qrv-node",
+      "owner": "Holder experience engineer",
+      "path": ".agents/skills/qrv-wallet-credential-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-08",
+      "slug": "qrv-api-sdk-engineer",
+      "priority": "P1",
+      "primaryRepo": "ohi-stack/qrv-api",
+      "owner": "Developer platform engineer",
+      "path": ".agents/skills/qrv-api-sdk-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-09",
+      "slug": "qrv-automated-qa-engineer",
+      "priority": "P1",
+      "primaryRepo": "ohi-stack/qrv-node",
+      "owner": "Independent QA agent",
+      "path": ".agents/skills/qrv-automated-qa-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-10",
+      "slug": "qrv-devops-release-engineer",
+      "priority": "P1",
+      "primaryRepo": "ohi-stack/qrv-node",
+      "owner": "DevOps/SRE engineer",
+      "path": ".agents/skills/qrv-devops-release-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-11",
+      "slug": "qrv-commercial-platform-engineer",
+      "priority": "P2",
+      "primaryRepo": "ohi-stack/qrv-node",
+      "owner": "Commercial application engineer",
+      "path": ".agents/skills/qrv-commercial-platform-engineer/SKILL.md"
+    },
+    {
+      "id": "QRV-12",
+      "slug": "qrv-documentation-standards-engineer",
+      "priority": "P2",
+      "primaryRepo": "ohi-stack/qrv-node",
+      "owner": "Documentation/standards engineer",
+      "path": ".agents/skills/qrv-documentation-standards-engineer/SKILL.md"
+    }
+  ]
+}

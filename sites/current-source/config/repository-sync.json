@@ -1,0 +1,26 @@
+{
+  "baseline": "2026-09-19",
+  "architecture": {
+    "publicPlatform": "https://qrv.network",
+    "apiAuthority": "https://api.qrv.network/api/v1",
+    "registryAuthority": "PostgreSQL",
+    "sourceOfTruthRule": "The public Site presents the platform; qrv-api owns canonical persistence and privileged operations."
+  },
+  "repositories": [
+    {"repository":"ohi-stack/qrv-node","commit":"0949815c020e7f27f388f48f696bd931a6504b0a","role":"canonical public platform runtime, route manifest, and production sitemap"},
+    {"repository":"ohi-stack/qrv-api","commit":"bc9ce14805c69bfe9f08c3d9748a06b55c7cbcdd","role":"canonical API, registry, cryptographic, audit, and mutation authority"},
+    {"repository":"ohi-stack/qrv-marketing-site","commit":"b1c7ca05b9401a1dcab42c90df1bcab6278bc91a","role":"design, content, SEO, and Sites source reference; not a competing runtime"},
+    {"repository":"ohi-stack/qrv-registry","commit":"144a85413c90e67c818e095a5cb3164b44928174","role":"registry schema and lifecycle source module"},
+    {"repository":"ohi-stack/qrv-verify","commit":"45b880186a1ccadd1269dda29afceedd1d053e09","role":"verification source archive; public verification is consolidated into qrv-node"},
+    {"repository":"ohi-stack/issuer-qrv","commit":"91160fb3b0e4dd01eb037a034ad9f5b0fb8e3b70","role":"issuer lifecycle and onboarding source module"},
+    {"repository":"ohi-stack/qrv-docs","commit":"79659aecb1b76a52327ee8acf3bb65edbe54c982","role":"documentation publishing source module"},
+    {"repository":"ohi-stack/qrv-status","commit":"c68808fb661dd6798f4df330f31a501a62207fb3","role":"status monitoring source module"},
+    {"repository":"ohi-stack/qrv-security","commit":"2ceac90126d81657caf60af26178ea919e96cf27","role":"security policy source module"},
+    {"repository":"ohi-stack/qrv-infra","commit":"f51823dde04d52b11d2948a508a989c48181ea27","role":"deployment and convergence source module"},
+    {"repository":"ohi-stack/qrv-sdk","commit":"72d2bfe618b1252492ffe12825b04614fbdcaece","role":"SDK and integration documentation source module"},
+    {"repository":"ohi-stack/qrv-billing","commit":"23b60932cfb150aa741b5c7e5b2e6c7ff1abcc73","role":"billing and commercialization source module"},
+    {"repository":"ohi-stack/qrv-admin","commit":"a8a8c6065b09d52bfe13261b3fdeb6098ec6c130","role":"admin operations source module"},
+    {"repository":"ohi-stack/qrv-wallet","commit":"39d18e41d10d6917bcb89d2d913b933e74a0cd5a","role":"wallet source module; consolidated into qrv.network/wallet"},
+    {"repository":"ohi-stack/qrv-agent-demos","commit":"1fdbbc7f48cc77a895bda7cc0ee78d43fad298d5","role":"demonstration scripts; not a production runtime"}
+  ]
+}
